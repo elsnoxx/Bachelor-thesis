@@ -1,4 +1,5 @@
 using Serilog;
+using server.GameServices;
 using server.Hubs;
 
 namespace server
@@ -24,6 +25,8 @@ namespace server
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+
+            builder.Services.AddSingleton<GameManager>();
 
             // Cors policy
             builder.Services.AddCors(options =>

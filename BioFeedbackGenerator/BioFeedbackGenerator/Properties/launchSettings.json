@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "BioFeedbackGenerator": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}

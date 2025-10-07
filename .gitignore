@@ -1,3 +1,6 @@
 /server/.vs
 /server/server/bin
 /server/server/obj
+/BioFeedbackGenerator/.vs
+/BioFeedbackGenerator/BioFeedbackGenerator/bin
+/BioFeedbackGenerator/BioFeedbackGenerator/obj

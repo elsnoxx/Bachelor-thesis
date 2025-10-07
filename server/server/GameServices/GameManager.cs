@@ -1,4 +1,5 @@
-﻿using server.Models;
+﻿using Serilog;
+using server.Models;
 
 namespace server.GameServices
 {
@@ -19,5 +20,35 @@ namespace server.GameServices
             _gameServices["EnergyBattle"] = new LudoGameServices();
             // Můžeš přidat další hry zde
         }
+
+
+        // Přidání hráče do hry
+        public void AddPlayerToGame(string gameType, string connectionId, string playerName)
+        {
+            var player = new Player { ConnectionId = connectionId, PlayerName = playerName, GameType = gameType };
+            _connectedPlayers[connectionId] = player;
+
+            if (!_gameRooms.ContainsKey(gameType))
+                _gameRooms[gameType] = new HashSet<string>();
+
+            _gameRooms[gameType].Add(connectionId);
+        }
+
+        // Odebrání hráče při odpojení
+        public void RemovePlayer(string connectionId)
+        {
+            if (!_connectedPlayers.ContainsKey(connectionId)) return;
+            var gameType = _connectedPlayers[connectionId].GameType;
+            _gameRooms[gameType]?.Remove(connectionId);
+            _connectedPlayers.Remove(connectionId);
+        }
+        public void GetPlayersInGame(string gameType)
+        {
+            foreach (var player in _connectedPlayers.Values)
+            {
+                Log.Information($"{player.PlayerName}");
+            }
+        }
+
     }
 }
