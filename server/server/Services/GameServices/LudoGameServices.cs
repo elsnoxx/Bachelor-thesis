@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace server.GameServices
+namespace server.Services.GameServices
 {
     public class LudoGameServices : IGameService
     {

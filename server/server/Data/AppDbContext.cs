@@ -1,15 +1,54 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using server.Models;
+using server.Models.DB;
 using System;
 
 namespace server.Data
 {
     public class AppDbContext : DbContext
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+        public DbSet<User> Users => Set<User>();
+        public DbSet<GameRoom> GameRooms => Set<GameRoom>();
+        public DbSet<Session> Sessions => Set<Session>();
+        public DbSet<BioFeedback> BioFeedbacks => Set<BioFeedback>();
+        public DbSet<Statistic> Statistics => Set<Statistic>();
 
-        public DbSet<Player> Players { get; set; }
-        public DbSet<BioData> BioDatas { get; set; }
-        public DbSet<User> users { get; set; }
+        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+        {
         }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            // Relace: User → GameRoom
+            modelBuilder.Entity<GameRoom>()
+                .HasOne(g => g.Creator)
+                .WithMany(u => u.CreatedRooms)
+                .HasForeignKey(g => g.CreatedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Relace: User → Session
+            modelBuilder.Entity<Session>()
+                .HasOne(s => s.User)
+                .WithMany(u => u.Sessions)
+                .HasForeignKey(s => s.UserId);
+
+            // Relace: GameRoom → Session
+            modelBuilder.Entity<Session>()
+                .HasOne(s => s.GameRoom)
+                .WithMany(g => g.Sessions)
+                .HasForeignKey(s => s.GameRoomId);
+
+            // Relace: Session → BioFeedback
+            modelBuilder.Entity<BioFeedback>()
+                .HasOne(b => b.Session)
+                .WithMany(s => s.BioFeedbacks)
+                .HasForeignKey(b => b.SessionId);
+
+            // Relace: User → Statistic
+            modelBuilder.Entity<Statistic>()
+                .HasOne(s => s.User)
+                .WithMany(u => u.Statistics)
+                .HasForeignKey(s => s.UserId);
+        }
+    }
 }

@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Serilog;
 using System.Security.AccessControl;
-using server.GameServices;
+using server.Services.GameServices;
 
 namespace server.Hubs
 {

@@ -1,6 +1,8 @@
+using Microsoft.EntityFrameworkCore;
 using Serilog;
-using server.GameServices;
+using server.Data;
 using server.Hubs;
+using server.Services.GameServices;
 
 namespace server
 {
@@ -26,6 +28,15 @@ namespace server
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
+            // Database connection
+            builder.Services.AddDbContext<AppDbContext>(options =>
+                    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+                           .EnableSensitiveDataLogging()
+                           .LogTo(Console.WriteLine, LogLevel.Information));
+
+
+
+            // Singleton Service
             builder.Services.AddSingleton<GameManager>();
 
             // Cors policy
@@ -48,7 +59,7 @@ namespace server
                 app.UseSwaggerUI();
             }
 
-           app.UseCors("AllowAll");
+            app.UseCors("AllowAll");
 
             app.UseHttpsRedirection();
 

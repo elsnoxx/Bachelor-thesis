@@ -11,11 +11,25 @@ namespace server.Controllers
         {
         }
 
-        [HttpGet("login")]
+        [HttpPost("login")]
         public IActionResult Login()
         {
             Log.Information("Login called");
             return Ok("Login successful");
+        }
+
+        [HttpGet("logout")]
+        public IActionResult Logout()
+        {
+            Log.Information("Logout called");
+            return Ok("Logout successful");
+        }
+
+        [HttpGet("register")]
+        public IActionResult Register()
+        {
+            Log.Information("Register called");
+            return Ok("Register successful");
         }
     }
 }

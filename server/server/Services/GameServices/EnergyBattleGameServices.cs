@@ -1,4 +1,4 @@
-﻿namespace server.GameServices
+﻿namespace server.Services.GameServices
 {
     public class EnergyBattleGameServices
     {

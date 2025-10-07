@@ -1,7 +1,8 @@
 ﻿using Serilog;
+using server.Services.GameServices;
 using server.Models;
 
-namespace server.GameServices
+namespace server.Services.GameServices
 {
     public class GameManager
     {
