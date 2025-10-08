@@ -19,6 +19,11 @@ namespace server.Repositories
             return await _context.Users.FindAsync(id);
         }
 
+        public async Task<IEnumerable<User>> GetAllUserAsync()
+        {
+            return await _context.Users.ToListAsync();
+        }
+
         public async Task<User?> GetByUsernameAsync(string username)
         {
             return await _context.Users.FirstOrDefaultAsync(u => u.Username == username);

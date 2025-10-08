@@ -2,6 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using Serilog;
 using server.Data;
 using server.Hubs;
+using server.Repositories;
+using server.Repositories.Interfaces;
+using server.Services.DbServices;
+using server.Services.DbServices.Interfaces;
 using server.Services.GameServices;
 
 namespace server
@@ -38,6 +42,10 @@ namespace server
 
             // Singleton Service
             builder.Services.AddSingleton<GameManager>();
+
+            // Scoped Services for DB operations
+            builder.Services.AddScoped<IUserRepository, UserRepository>();
+            builder.Services.AddScoped<IUserDbServices, UserDbServices>();
 
             // Cors policy
             builder.Services.AddCors(options =>
