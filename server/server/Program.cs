@@ -7,6 +7,8 @@ using server.Repositories.Interfaces;
 using server.Services.DbServices;
 using server.Services.DbServices.Interfaces;
 using server.Services.GameServices;
+using server.Services.Utils;
+using server.Services.Utils.Interfaces;
 
 namespace server
 {
@@ -45,7 +47,11 @@ namespace server
 
             // Scoped Services for DB operations
             builder.Services.AddScoped<IUserRepository, UserRepository>();
+            builder.Services.AddScoped<ITokenRepository, TokenRepository>();
+
             builder.Services.AddScoped<IUserDbServices, UserDbServices>();
+            builder.Services.AddScoped<IAuthDbService, AuthDbService>();
+            builder.Services.AddScoped<IJwtUtils, JwtUtils>();
 
             // Cors policy
             builder.Services.AddCors(options =>

@@ -1,35 +1,96 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Mvc;
 using Serilog;
+using server.Models.Auth;
+using server.Services.DbServices.Interfaces;
+using System.Diagnostics.CodeAnalysis;
+using System.Threading.Tasks;
 
 namespace server.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/")]
     public class AuthController : ControllerBase
     {
-        public AuthController()
+        private readonly IAuthDbService _authDbService;
+        public AuthController(IAuthDbService authDbService)
         {
+            _authDbService = authDbService;
         }
 
         [HttpPost("login")]
-        public IActionResult Login()
+        public async Task<IActionResult> Login([FromBody] UserLogin userLogin)
         {
-            Log.Information("Login called");
-            return Ok("Login successful");
+            if (!ModelState.IsValid)
+            {
+                return BadRequest("Invalid user data");
+            }
+
+            try
+            {
+                var result = await _authDbService.LoginAsync(userLogin, HttpContext);
+                if (result.Success)
+                {
+                    return Ok(new { Token = result.Data.tokenJWT, RefreshToken = result.Data.refreshToken  });
+                }
+                return Unauthorized(result.Data);
+                
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Internal server error: {ex}");
+                return StatusCode(500, "Internal server error");
+            }
         }
 
-        [HttpGet("logout")]
-        public IActionResult Logout()
+        [HttpPost("refresh")]
+        public async Task<IActionResult> Logout()
         {
-            Log.Information("Logout called");
-            return Ok("Logout successful");
+            if(!Request.Cookies.TryGetValue("refresh_token", out var refreshTokenValue))
+            {
+                return BadRequest("No refresh token provided");
+            }
+            try
+            {
+                var result = await _authDbService.RefreshTokenAsync(refreshTokenValue, HttpContext);
+                if (result.Success)
+                {
+                    return Ok(new { Token = result.Data.tokenJWT, RefreshToken = result.Data.refreshToken });
+                }
+                return Unauthorized(result.Data);
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Internal server error: {ex}");
+                return StatusCode(500, "Internal server error");
+            }
         }
 
-        [HttpGet("register")]
-        public IActionResult Register()
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] UserRegister user)
         {
-            Log.Information("Register called");
-            return Ok("Register successful");
+            if (!ModelState.IsValid)
+            {
+                return BadRequest("Invalid user data");
+            }
+
+            try
+            {
+                var result = await _authDbService.RegisterAsync(user);
+                if (result.Success)
+                {
+                    return Ok("User registered successfully");
+                }
+                return BadRequest(result.Error);
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Internal server error: {ex}");
+                return StatusCode(500, "Internal server error");
+            }
         }
     }
 }
+// user@example.com
+//   "username": "elsnoxx",
+//   "password": "Test12345!",

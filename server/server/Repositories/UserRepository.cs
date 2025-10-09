@@ -1,5 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.VisualBasic;
+using Serilog;
 using server.Data;
+using server.Models;
 using server.Models.DB;
 using server.Repositories.Interfaces;
 
@@ -29,13 +32,27 @@ namespace server.Repositories
             return await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
         }
 
+        public async Task<User?> GetByEmailAsync(string email)
+        {
+            return await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+        }
+
         public async Task AddAsync(User user)
         {
             await _context.Users.AddAsync(user);
+            await _context.SaveChangesAsync();
         }
 
         public async Task SaveChangesAsync()
         {
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task LoginUser(Guid id)
+        {
+            var user = await _context.Users.FindAsync(id);
+            user.LastLogin = DateTime.UtcNow;
+            _context.Users.Update(user);
             await _context.SaveChangesAsync();
         }
     }

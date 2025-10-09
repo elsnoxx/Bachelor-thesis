@@ -12,6 +12,7 @@ namespace server.Data
         public DbSet<Session> Sessions => Set<Session>();
         public DbSet<BioFeedback> BioFeedbacks => Set<BioFeedback>();
         public DbSet<Statistic> Statistics => Set<Statistic>();
+        public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
@@ -32,6 +33,12 @@ namespace server.Data
                 .WithMany(u => u.Sessions)
                 .HasForeignKey(s => s.UserId);
 
+            // Relace: User -> RefreshToken
+            modelBuilder.Entity<RefreshToken>()
+                .HasOne(r => r.User)
+                .WithMany(u => u.RefreshTokens)
+                .HasForeignKey(r => r.UserId);
+
             // Relace: GameRoom → Session
             modelBuilder.Entity<Session>()
                 .HasOne(s => s.GameRoom)
@@ -49,6 +56,12 @@ namespace server.Data
                 .HasOne(s => s.User)
                 .WithMany(u => u.Statistics)
                 .HasForeignKey(s => s.UserId);
+
+            // Relace: User → RefreshToken
+            modelBuilder.Entity<RefreshToken>()
+                .HasOne(r => r.User)
+                .WithMany(u => u.RefreshTokens)
+                .HasForeignKey(r => r.UserId);
         }
     }
 }
