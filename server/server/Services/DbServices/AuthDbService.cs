@@ -55,15 +55,10 @@ namespace server.Services.DbServices
             var tokens = GenerateTokens(user);
 
             // Vytvoření refresh tokenu
-            var refreshToken = new RefreshToken
-            {
-                UserId = user.Id,
-                Token = tokens.refreshToken,
-                CreatedByIp = httpContext.Connection.RemoteIpAddress?.ToString()
-            };
+            var newRefreshToken = CreateRefreshToken(user.Id, HttpHelper.GetClientIp(httpContext), tokens.refreshToken);
 
 
-            await RegisterLogin(refreshToken);
+            await RegisterLogin(newRefreshToken);
 
             return Result<Tokens>.Ok(tokens);
         }
@@ -73,19 +68,12 @@ namespace server.Services.DbServices
             var existingUsername = await _userRepository.GetByUsernameAsync(userRegister.Username);
             var existingEmail = await _userRepository.GetByEmailAsync(userRegister.Email);
 
-            if (existingUsername != null && existingEmail != null) 
+            if (existingUsername != null || existingEmail != null) 
             {
                 return Result<bool>.Fail("Username or email already exists.");
             }
 
-            var newUser = new User
-            {
-                Id = Guid.NewGuid(),
-                Username = userRegister.Username,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(userRegister.Password),
-                Email = userRegister.Email,
-                Role = "User"
-            };
+            var newUser = CreateUser(userRegister);
             
 
             try
@@ -133,8 +121,9 @@ namespace server.Services.DbServices
             await using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
+                var user = await _userRepository.GetByIdAsync(refreshToken.UserId);
                 // Aktualizace dat uživatele
-                await _userRepository.LoginUser(refreshToken.UserId);
+                await _userRepository.LoginUser(user);
 
                 await _tokenRepository.AddAsync(refreshToken);
 
@@ -187,6 +176,18 @@ namespace server.Services.DbServices
                 UserId = userId,
                 Token = token,
                 CreatedByIp = ip
+            };
+        }
+
+        private User CreateUser(UserRegister userRegister)
+        {
+            return new User
+            {
+                Id = Guid.NewGuid(),
+                Username = userRegister.Username,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(userRegister.Password),
+                Email = userRegister.Email,
+                Role = "User"
             };
         }
 

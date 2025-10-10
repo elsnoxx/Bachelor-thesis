@@ -1,10 +1,11 @@
 ﻿using server.Models.DB;
+using server.Models.DTO;
 
 namespace server.Services.DbServices.Interfaces
 {
     public interface IUserDbServices
     {
-        Task<User?> GetUserByIdAsync(Guid id);
-        Task<IEnumerable<User>> GetAllUsersAsync();
+        Task<UserDTO?> GetUserByIdAsync(Guid id);
+        Task<IEnumerable<UserDTO>> GetAllUsersAsync();
     }
 }

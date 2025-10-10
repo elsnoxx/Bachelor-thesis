@@ -40,7 +40,15 @@ namespace server
                            .EnableSensitiveDataLogging()
                            .LogTo(Console.WriteLine, LogLevel.Information));
 
+            // In your Program.cs, configure JSON serialization to handle cycles:
+            //builder.Services.AddControllers()
+            //    .AddJsonOptions(options =>
+            //    {
+            //        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
+            //        options.JsonSerializerOptions.MaxDepth = 64; // Optional: increase max depth if needed
+            //    });
 
+            builder.Services.AddAutoMapper(typeof(Program));
 
             // Singleton Service
             builder.Services.AddSingleton<GameManager>();
@@ -48,9 +56,12 @@ namespace server
             // Scoped Services for DB operations
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<ITokenRepository, TokenRepository>();
+            builder.Services.AddScoped<IGameRoomRepository, GameRoomRepository>();
+            builder.Services.AddScoped<ISesionRepository, SesionRepository>();
 
             builder.Services.AddScoped<IUserDbServices, UserDbServices>();
             builder.Services.AddScoped<IAuthDbService, AuthDbService>();
+            builder.Services.AddScoped<IGameRoomService, GameRoomService>();
             builder.Services.AddScoped<IJwtUtils, JwtUtils>();
 
             // Cors policy

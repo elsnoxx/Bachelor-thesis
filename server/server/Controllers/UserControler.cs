@@ -39,9 +39,9 @@ namespace server.Controllers
             var user = await _userDbServices.GetUserByIdAsync(id);
             if (user == null)
             {
-                return new NotFoundResult();
+                return NotFound();
             }
-            return new OkObjectResult(user);
+            return Ok(user);
         }
     }
 }

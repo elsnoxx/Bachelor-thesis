@@ -48,9 +48,8 @@ namespace server.Repositories
             await _context.SaveChangesAsync();
         }
 
-        public async Task LoginUser(Guid id)
+        public async Task LoginUser(User user)
         {
-            var user = await _context.Users.FindAsync(id);
             user.LastLogin = DateTime.UtcNow;
             _context.Users.Update(user);
             await _context.SaveChangesAsync();

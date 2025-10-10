@@ -10,6 +10,6 @@ namespace server.Repositories.Interfaces
         Task<User?> GetByEmailAsync(string email);
         Task AddAsync(User user);
         Task SaveChangesAsync();
-        Task LoginUser(Guid id);
+        Task LoginUser(User user);
     }
 }

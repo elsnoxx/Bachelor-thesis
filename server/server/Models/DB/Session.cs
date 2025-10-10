@@ -9,6 +9,7 @@
 
         public Guid GameRoomId { get; set; }
         public GameRoom GameRoom { get; set; } = null!;
+        public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime StartTime { get; set; } = DateTime.UtcNow;
         public DateTime? EndTime { get; set; }

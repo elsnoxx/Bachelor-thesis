@@ -27,6 +27,7 @@ namespace server.Hubs
             Log.Information($"[{playerId}] joined the game.");
             _gameManager.AddPlayerToGame(gameType, Context.ConnectionId, playerId);
             await Clients.Others.SendAsync("PlayerJoined", playerId, gameType);
+            Log.Information($"Players in {gameType}:");
         }
 
         // Když klient pošle biofeedback data
