@@ -6,8 +6,14 @@ namespace BioFeedbackGenerator
     {
         static async Task Main(string[] args)
         {
-            string hubUrl = "https://localhost:7202/gamehub";
-
+            string port = "";
+            Console.WriteLine("Enter the port number for the SignalR hub (default is 5000): ");
+            port = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(port))
+            {
+                port = "5000";
+            }
+            string hubUrl = $"http://localhost:{port}/gamehub";
             var manager = new ClientManager(hubUrl);
 
             // přidat simulované hráče
