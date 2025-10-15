@@ -48,6 +48,17 @@ Table Statistic {
   last_played datetime
 }
 
+Table RefRefreshToken{
+  id uuid [pk]
+  user_id uuid [not null]
+  token varchar(255) [not null]
+  Created datetime [default: `CURRENT_TIMESTAMP`]
+  expires datetime [not null]
+  revoked datetime [null]
+  revorkedByIp varchar(255) [null]
+  ReplacedByToken varchar(255) [null]
+}
+
 // Vztahy
 Ref: Session.user_id > User.id
 Ref: Session.game_room_id > GameRoom.id

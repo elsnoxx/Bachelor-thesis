@@ -8,7 +8,7 @@ Cílem této bakalářské práce je navrhnout a naprogramovat **hry pro více h
 
 ---
 
-## 🎯 Hlavní cíle práce
+## Hlavní cíle práce
 
 1. Nastudovat problematiku vodivosti pokožky.
 2. Nastudovat problematiku měřícího zařízení a jeho komunikaci prostřednictvím Bluetooth Low Energy technologie.
@@ -17,16 +17,15 @@ Cílem této bakalářské práce je navrhnout a naprogramovat **hry pro více h
 
 ---
 
-## 📡 Použité technologie
-
-- React + TypeScript
-- Web Bluetooth API
-- Herní framework (např. Phaser 3)
-- Socket.IO (pro multiplayer)
-- GSR zařízení s BLE komunikací
-
+## Dokumentace 
+- [Kompletní dokumentace](/doc/TechnicalSpec/README.md) - technická specifikace, API dokumentace
+- [Databázové schéma](/doc/DB_Schema/notes.md) - návrh databáze
+- [Herní mechaniky](/doc/games/) - popis jednotlivých her
 ---
 
-## 📄 Licence
+## Roadmap & TODO
+Seznam nedokončených funkcí a plánovaných vylepšení je dostupný v [TODO dokumentaci](doc/Todos.md).
+
+## Licence
 
 Tento projekt je licencován pod licencí [MIT](./LICENSE).
