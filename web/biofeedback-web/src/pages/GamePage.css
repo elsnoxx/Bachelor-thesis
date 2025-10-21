@@ -1,0 +1,14 @@
+/* GamePage.module.css */
+.gameList {
+  list-style-type: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.gameCard {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+}

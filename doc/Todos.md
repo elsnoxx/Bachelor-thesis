@@ -3,6 +3,8 @@
 - MQTT / BackgroundWorker
     - Přebírá kontinuální proud dat z BLE → ukládá do DB.
 
+- Vymyslet a přidat možnost importovaní a nebo výber z nějkého avata jako ikonu pro uživatele
+
 ### DB
 - Omezení velikosti znaku u username na 100 
 - Biofeedback values 
