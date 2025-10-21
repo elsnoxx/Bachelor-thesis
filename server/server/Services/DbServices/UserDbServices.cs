@@ -34,7 +34,5 @@ namespace server.Services.DbServices
             return _mapper.Map<UserDTO>(user);
 
         }
-
-
     } 
 }

@@ -27,6 +27,13 @@ namespace server.Controllers
         [HttpGet]
         public async Task<IActionResult> GetUsersInGameRoom(Guid gameRoomId)
         {
+            var users = await _gameRoomService.GetUsersGameRoomAsync(gameRoomId);
+
+            if (!users.Success)
+            {
+                return BadRequest(users.Data);
+            }
+
             return Ok();
         }
 
@@ -62,7 +69,7 @@ namespace server.Controllers
                 return BadRequest(result.Data);
             }
 
-            return Ok($"Hello you try to join romm {GameRoomId}");
+            return Ok($"You join room no. {GameRoomId}");
         }
 
         [HttpPost("{id}/leave")]
@@ -72,7 +79,15 @@ namespace server.Controllers
             {
                 return BadRequest("Invalid user data");
             }
-            return Ok($"Hello you try to leave romm {id}");
+
+            var result = await _gameRoomService.LeaveGameRoomAsync(id, request); 
+
+            if (!result.Success)
+            {
+                return BadRequest(result.Data);
+            }
+
+            return Ok($"You leave romm no. {id}");
         }
 
         [HttpPost("{id}/start")]
