@@ -13,16 +13,26 @@ RUN npm install
 COPY . .
 
 # Build pro produkci
-RUN npm run build
+# RUN npm run build
+
+# Testing Build
+RUN npx vite build
 
 # 2. Stage: servírování přes Nginx
 FROM nginx:alpine
 
 # Odstran defaultní obsah
 RUN rm -rf /usr/share/nginx/html/*
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Zkopíruj vlastní Nginx config
+COPY nginx.conf /etc/nginx/conf.d/
 
 # Zkopíruj build React aplikace do Nginx
-COPY --from=build /app/build /usr/share/nginx/html
+# COPY --from=build /app/build /usr/share/nginx/html
+
+# Testing Copy
+COPY --from=build /app/dist /usr/share/nginx/html
 
 
 EXPOSE 80

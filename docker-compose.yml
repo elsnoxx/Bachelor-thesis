@@ -16,28 +16,26 @@ services:
 
   api:
     build:
-      context: ./api
+      context: ./server/server
       dockerfile: Dockerfile
     container_name: biofeedback-api
     environment:
-      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/api.pfx
-      - ASPNETCORE_Kestrel__Certificates__Default__Password=mypassword
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=biofeedback;Username=postgres;Password=postgres
-    volumes:
-      - ./certs:/https:ro
     expose:
-      - "443"
+      - "80"
     depends_on:
       - postgres
     restart: unless-stopped
 
   frontend:
     build:
-      context: ./frontend
+      context: ./web/biofeedback-web
       dockerfile: Dockerfile
     container_name: biofeedback-frontend
-    expose:
-      - "80"
+    ports:
+      - "80:80"
     depends_on:
       - api
     restart: unless-stopped

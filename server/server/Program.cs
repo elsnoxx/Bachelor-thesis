@@ -71,7 +71,7 @@ namespace server
                     policy => policy
                         .AllowAnyHeader()
                         .AllowAnyMethod()
-                        .WithOrigins("http://localhost:5173")
+                        .WithOrigins("http://localhost:5173","https://localhost:443", "https://localhost")
                         .AllowCredentials());
             });
 
