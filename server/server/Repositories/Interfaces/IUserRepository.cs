@@ -8,6 +8,7 @@ namespace server.Repositories.Interfaces
         Task<IEnumerable<User>> GetAllUserAsync();
         Task<User?> GetByUsernameAsync(string username);
         Task<User?> GetByEmailAsync(string email);
+        Task<bool> UpdateUserAsync(User user);
         Task AddAsync(User user);
         Task SaveChangesAsync();
         Task LoginUser(User user);

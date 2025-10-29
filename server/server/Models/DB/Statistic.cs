@@ -6,7 +6,6 @@
 
         public Guid UserId { get; set; }
         public User User { get; set; } = null!;
-
         public string? GameType { get; set; }
         public float? AverageGsr { get; set; }
         public float? BestScore { get; set; }

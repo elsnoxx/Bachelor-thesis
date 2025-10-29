@@ -27,6 +27,8 @@ services:
       - "80"
     depends_on:
       - postgres
+    volumes:
+      - avatars_data:/app/wwwroot/avatars
     restart: unless-stopped
 
   frontend:
@@ -38,7 +40,10 @@ services:
       - "80:80"
     depends_on:
       - api
+    volumes:
+      - avatars_data:/usr/share/nginx/html/avatars:ro
     restart: unless-stopped
 
 volumes:
   postgres_data:
+  avatars_data:

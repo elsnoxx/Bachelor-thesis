@@ -22,6 +22,18 @@ namespace server.Repositories
             return await _context.Users.FindAsync(id);
         }
 
+        public async Task<bool> UpdateUserAsync(User user)
+        {
+            var existingUser = await _context.Users.FindAsync(user.Id);
+            if (existingUser == null)
+            {
+                return false;
+            }
+            _context.Entry(existingUser).CurrentValues.SetValues(user);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
         public async Task<IEnumerable<User>> GetAllUserAsync()
         {
             return await _context.Users.ToListAsync();

@@ -43,5 +43,20 @@ namespace server.Controllers
             }
             return Ok(user);
         }
+
+        [HttpPost("{userId}/avatar/upload")]
+        public async Task<IActionResult> UploadAvatar(Guid userId, IFormFile avatarFile)
+        {
+            if (avatarFile == null || avatarFile.Length == 0)
+            {
+                return BadRequest("No file uploaded.");
+            }
+            var result = await _userDbServices.UploadUserAvatarAsync(userId, avatarFile);
+            if (!result.Success)
+            {
+                return BadRequest(result.Data);
+            }
+            return Ok("Avatar uploaded successfully.");
+        }
     }
 }

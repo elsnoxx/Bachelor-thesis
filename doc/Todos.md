@@ -3,39 +3,22 @@
 - MQTT / BackgroundWorker
     - Přebírá kontinuální proud dat z BLE → ukládá do DB.
 
-- Vymyslet a přidat možnost importovaní a nebo výber z nějkého avata jako ikonu pro uživatele
-
 ### DB
-- Omezení velikosti znaku u username na 100 
 - Biofeedback values 
     - **Retention policy** - data starší než 6-12 měsíců lze archivovat/mazat
     - Indexování podle `session_id` a `timestamp`
-- pridat indexy v entity frameworku
-    - idx_session_user_active ON Session(user_id, is_active) 
-    - idx_biofeedback_session_time ON BioFeedback(session_id, timestamp)
-    - idx_gameroom_status_type ON GameRoom(status, game_type)
-    - idx_statistic_user_game ON Statistic(user_id, game_type)
 - **Cleanup job** 
-    - pravidelně mazat expirované a zrušené tokeny starší než X dní
+    - pravidelně mazat expirované a zrušené tokeny starší než X dní, pomoci backgroud workera
 
 ### API server
 - **GameRoom Controller**
-    - Přidání uživatele do session
-    - Opuštění session
-    - Zobrazení všech dostupných sessions
-    - Vytváření nových herních místností
-    - Správa heslem chráněných místností
+    - Zobrazení všech dostupných sessions - upravit json 
 
 - **Statistics Controller**
     - Zobrazení výsledků a statistik hráčů
     - Real-time zobrazení biofeedback dat během hry
     - Historický přehled GSR hodnot pro analýzu
     - Leaderboards a achievement systém
-
-- **General**
-    - Automatické spuštění migrací při startu aplikace
-    - Seed data pro prázdnou databázi
-    - Health check endpoints pro monitoring
 
 ### GameHub (SignalR)
 - **Session Management**

@@ -2,7 +2,7 @@ import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 
 export async function startConnection(playerId, onBioDataReceived) {
   const connection = new HubConnectionBuilder()
-    .withUrl('/api/gamehub')
+    .withUrl('/gamehub')
     .configureLogging(LogLevel.Information)
     .build();
 

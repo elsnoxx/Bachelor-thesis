@@ -1,7 +1,11 @@
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
 using server.Data;
+using server.Helpers;
 using server.Hubs;
+using server.Models.DB;
 using server.Repositories;
 using server.Repositories.Interfaces;
 using server.Services.DbServices;
@@ -29,6 +33,13 @@ namespace server
             builder.Services.AddControllers();
             // Include SignalR service
             builder.Services.AddSignalR();
+
+            // Health checks
+            builder.Services.AddHealthChecks()
+                    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection"),
+                               name: "PostgreSQL",
+                               failureStatus: HealthStatus.Unhealthy,
+                               tags: new[] { "db", "postgres" });
 
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
@@ -64,6 +75,9 @@ namespace server
             builder.Services.AddScoped<IGameRoomService, GameRoomService>();
             builder.Services.AddScoped<IJwtUtils, JwtUtils>();
 
+            builder.Services.AddScoped<FileHelper>();
+
+
             // Cors policy
             builder.Services.AddCors(options =>
             {
@@ -71,7 +85,7 @@ namespace server
                     policy => policy
                         .AllowAnyHeader()
                         .AllowAnyMethod()
-                        .WithOrigins("http://localhost:5173","https://localhost:443", "https://localhost")
+                        .WithOrigins("http://localhost:5173", "https://localhost:443", "https://localhost")
                         .AllowCredentials());
             });
 
@@ -90,13 +104,58 @@ namespace server
 
             app.UseAuthorization();
 
-
+            //SignalR endpoint
             app.MapHub<GameHub>("/gamehub");
+            // Health check endpoint
+            app.MapHealthChecks("/health", new HealthCheckOptions
+            {
+                ResponseWriter = async (context, report) =>
+                {
+                    context.Response.ContentType = "application/json";
+                    var json = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        status = report.Status.ToString(),
+                        checks = report.Entries.Select(e => new {
+                            name = e.Key,
+                            status = e.Value.Status.ToString(),
+                            description = e.Value.Description
+                        }),
+                        duration = report.TotalDuration.TotalMilliseconds
+                    });
+                    await context.Response.WriteAsync(json);
+                }
+            });
 
 
             app.MapControllers();
 
+            DBMigrate(app);
+
             app.Run();
+        }
+
+        public static void DBMigrate(IHost app)
+        {
+            using (var scope = app.Services.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+                dbContext.Database.EnsureCreated();
+
+                if (!dbContext.Users.Any())
+                {
+                    dbContext.Users.Add(new User
+                    {
+                        Id = Guid.NewGuid(),
+                        Username = "admin",
+                        Email = "admin@example.com",
+                        PasswordHash =  BCrypt.Net.BCrypt.HashPassword("admin"),
+                    });
+
+                    dbContext.SaveChangesAsync();
+                }
+            }
+
         }
     }
 }

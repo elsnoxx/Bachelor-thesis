@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using server.Models;
 using server.Models.DB;
+using server.Repositories;
 using System;
 
 namespace server.Data
@@ -62,6 +63,23 @@ namespace server.Data
                 .HasOne(r => r.User)
                 .WithMany(u => u.RefreshTokens)
                 .HasForeignKey(r => r.UserId);
+
+            // indexes
+            modelBuilder.Entity<Session>()
+                .HasIndex(s => new { s.UserId, s.IsActive })
+                .HasDatabaseName("idx_session_user_active");
+
+            modelBuilder.Entity<BioFeedback>()
+                .HasIndex(b => new { b.SessionId, b.Timestamp })
+                .HasDatabaseName("idx_biofeedback_session_time");
+
+            modelBuilder.Entity<GameRoom>()
+                .HasIndex(g => new { g.Status, g.GameType })
+                .HasDatabaseName("idx_gameroom_status_type");
+
+            modelBuilder.Entity<Statistic>()
+                .HasIndex(st => new { st.UserId, st.GameType })
+                .HasDatabaseName("idx_statistic_user_game");
         }
     }
 }

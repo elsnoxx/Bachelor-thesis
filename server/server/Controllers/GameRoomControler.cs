@@ -24,7 +24,7 @@ namespace server.Controllers
             return Ok(gameRooms);
         }
 
-        [HttpGet]
+        [HttpGet("{gameRoomId}/users")]
         public async Task<IActionResult> GetUsersInGameRoom(Guid gameRoomId)
         {
             var users = await _gameRoomService.GetUsersGameRoomAsync(gameRoomId);
