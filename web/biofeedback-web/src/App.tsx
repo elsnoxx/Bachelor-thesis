@@ -9,6 +9,7 @@ import './App.css';
 // Stránky (můžeš si je zatím vytvořit jako jednoduché komponenty)
 import HryPage from './pages/GamePage';
 import StatistikyPage from './pages/StatistickPage';
+import LudoGame from './features/games/ludo/LudoGame';
 
 interface BioData {
   playerId: string;
@@ -43,6 +44,7 @@ function App() {
           } />
           <Route path="/hry" element={<HryPage />} />
           <Route path="/statistiky" element={<StatistikyPage />} />
+          <Route path="/ludo" element={<LudoGame />} />
         </Routes>
       </div>
       <AppsFooter />
