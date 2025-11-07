@@ -37,7 +37,7 @@ namespace server.Hubs
 
             // Pošli všem ostatním
             _gameManager.GetPlayersInGame(gameType);
-            await Clients.Others.SendAsync("ReceiveBioData", playerId, value);
+            await Clients.All.SendAsync("ReceiveBioData", playerId, value);
         }
 
         // Když se klient odpojí

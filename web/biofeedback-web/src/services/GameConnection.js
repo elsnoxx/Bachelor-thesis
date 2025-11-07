@@ -2,8 +2,8 @@ import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 
 export async function startConnection(playerId, onBioDataReceived) {
   const connection = new HubConnectionBuilder()
-    .withUrl('/gamehub')
-    .configureLogging(LogLevel.Information)
+    .withUrl('http://localhost:5000/gamehub')
+    .configureLogging(LogLevel.Trace)
     .build();
 
   // Error handling
@@ -28,6 +28,7 @@ export async function startConnection(playerId, onBioDataReceived) {
     // Simulace odeslání dat ze senzoru
     setInterval(() => {
       const randomValue = Math.random() * 100;
+      console.log(`Sending to server: ${randomValue}`);
       connection.invoke('SendBioData', playerId, "relax", randomValue)
         .catch(err => console.error('Error sending data:', err));
     }, 100);

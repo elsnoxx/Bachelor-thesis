@@ -81,12 +81,19 @@ namespace server
             // Cors policy
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("AllowAll",
-                    policy => policy
-                        .AllowAnyHeader()
-                        .AllowAnyMethod()
-                        .WithOrigins("http://localhost:5173", "https://localhost:443", "https://localhost")
-                        .AllowCredentials());
+            options.AddPolicy("AllowAll",
+                policy => policy
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .WithOrigins(
+                        "http://localhost:5173",
+                        "http://localhost:3000",
+                        "http://localhost",
+                        "http://localhost:80",
+                        "https://localhost:443", 
+                        "https://localhost"
+                    )
+                    .AllowCredentials());
             });
 
             var app = builder.Build();

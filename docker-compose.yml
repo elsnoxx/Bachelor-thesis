@@ -23,8 +23,8 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=biofeedback;Username=postgres;Password=postgres
-    expose:
-      - "80"
+    ports:
+      - "5000:80"
     depends_on:
       - postgres
     volumes:
@@ -38,8 +38,6 @@ services:
     container_name: biofeedback-frontend
     ports:
       - "80:80"
-    depends_on:
-      - api
     volumes:
       - avatars_data:/usr/share/nginx/html/avatars:ro
     restart: unless-stopped

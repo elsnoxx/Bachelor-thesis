@@ -14,7 +14,7 @@ export default function AppsFooter() {
                 <Row>
                     <Col className="text-center">
                         <p className="text-muted mb-0">
-                            © {getCurrentYear()} Biofeedback App - Bakalářská práce Rihard Ficek
+                            © {getCurrentYear()} Biofeedback App - Bakalářská práce Richard Ficek
                         </p>
                     </Col>
                 </Row>

@@ -1,14 +1,12 @@
-import React from "react";
 import { Card, Container, Row, Col } from "react-bootstrap";
-// import './GamePage.css';
 
 const games = [
-    { name: 'Člověče nezlob se', href: '/ludo', description: 'Klasická desková hra pro celou rodinu.', image: "/img/ludo.jpg" },
+    { name: 'Člověče nezlob se', href: '/games/ludo', description: 'Klasická desková hra pro celou rodinu.', image: "/img/ludo.jpg" },
     { name: 'Balancuj', href: '/balance', description: 'Zábavná hra na udržení rovnováhy.', image: "/img/balance.jpg" },
     { name: 'Bitva', href: '/battle', description: 'Strategická hra pro dva hráče.', image: "/img/battle.jpg" }
 ];
-
-export default function HryPage() {
+    
+export default function HryPage() {   
     return (
         <Container className="mt-4">
             <h2 className="mb-4">Výběr hry</h2>
