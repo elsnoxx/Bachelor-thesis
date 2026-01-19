@@ -2,7 +2,7 @@ import { Card, Container, Row, Col } from "react-bootstrap";
 
 const games = [
     { name: 'Člověče nezlob se', href: '/games/ludo', description: 'Klasická desková hra pro celou rodinu.', image: "/img/ludo.jpg" },
-    { name: 'Balancuj', href: '/balance', description: 'Zábavná hra na udržení rovnováhy.', image: "/img/balance.jpg" },
+    { name: 'Balancuj', href: '/games/balance', description: 'Zábavná hra na udržení rovnováhy.', image: "/img/balance.jpg" },
     { name: 'Bitva', href: '/battle', description: 'Strategická hra pro dva hráče.', image: "/img/battle.jpg" }
 ];
     

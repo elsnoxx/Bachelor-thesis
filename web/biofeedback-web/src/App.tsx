@@ -12,6 +12,8 @@ import HryPage from './pages/GamePage';
 import StatistikyPage from './pages/StatistickPage';
 import LudoGame from './features/games/ludo/LudoGame';
 import CreateGamePage from './features/games/ludo/components/CreateGameModal';
+import BalanceGame from './features/games/ballance/BalanceGame';
+import BalanceGameList from './features/games/ballance/BalanceGameList';
 
 interface BioData {
   playerId: string;
@@ -48,6 +50,8 @@ function App() {
           <Route path="/statistiky" element={<StatistikyPage />} />
           <Route path="/ludo" element={<LudoGame />} />
           <Route path="/games/ludo" element={<LudoGameList />} />
+          <Route path="/balance" element={<BalanceGame />} />
+          <Route path="/games/balance" element={<BalanceGameList />} />
         </Routes>
       </div>
       <AppsFooter />
