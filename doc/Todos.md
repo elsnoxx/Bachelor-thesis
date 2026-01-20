@@ -1,8 +1,5 @@
 ## Todos
 
-- MQTT / BackgroundWorker
-    - Přebírá kontinuální proud dat z BLE → ukládá do DB.
-
 ### DB
 - Biofeedback values 
     - **Retention policy** - data starší než 6-12 měsíců lze archivovat/mazat
