@@ -7,10 +7,10 @@ import type { Piece } from "./logic/LudoEngine";
 import { rollDice, applyMove, canMovePiece, getStartForPlayer } from "./logic/LudoEngine";
 
 const initialPieces: Piece[] = [
-  { id: "r1", playerId: "r", posIndex: -1 },
-  { id: "r2", playerId: "r", posIndex: -1 },
-  { id: "b1", playerId: "b", posIndex: -1 },
-  { id: "g1", playerId: "g", posIndex: -1 },
+  { id: "r1", playerId: "r", posIndex: 0 },
+  { id: "r2", playerId: "r", posIndex: 1 },
+  { id: "b1", playerId: "b", posIndex: 0 },
+  { id: "g1", playerId: "g", posIndex: 0 },
 ];
 
 export default function LudoGame() {
@@ -57,11 +57,7 @@ export default function LudoGame() {
           <div className="d-flex flex-column gap-3">
             <Card>
               <Card.Body>
-                <div className="d-flex gap-2">
-                  <Button onClick={handleRoll}>Hod kostkou</Button>
-                  <div>Dice: {dice ?? "-"}</div>
-                </div>
-                <LudoTurn playerOnTurn={true} />
+                <LudoTurn playerOnTurn={true} dice={dice} onRoll={handleRoll} />
               </Card.Body>
             </Card>
             <Card className="flex-grow-1" style={{ minHeight: 400 }}>

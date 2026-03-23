@@ -1,66 +1,53 @@
-/**
- * Check if Web Bluetooth is available and ready to use
- */
-export function checkBluetoothAvailability() {
-  // First check if Bluetooth is supported by the browser
+export async function connectToBLE(onDataReceived?: (data: { gsr: number; timestamp: Date }) => void) {
   if (!navigator.bluetooth) {
-    console.error('❌ Web Bluetooth API není podporováno v tomto prohlížeči.');
-    alert('Váš prohlížeč nepodporuje Bluetooth připojení.\nPoužijte prosím Chrome nebo Edge.');
-    return false;
+    throw new Error("Bluetooth is not supported by this browser.");
   }
-  
-  return true;
-}
-
-export async function connectToBLE() {
-  // Check if Web Bluetooth API is available
-  if (!checkBluetoothAvailability()) return;
   
   try {
-    // Show instructions before requesting the device
-    console.log('Povolte Bluetooth v dialogovém okně, které se zobrazí...');
-    
     const device = await navigator.bluetooth.requestDevice({
-      filters: [{ services: ['battery_service'] }], // nahraď UUID služby tvého zařízení
-      optionalServices: ['device_information']       // přidej, pokud potřebuješ další služby
+      filters: [
+        { services: ['0000b100-0000-1000-8000-00805f9b34fb'] }
+      ],
     });
 
-    const server = await device.gatt?.connect();
-    console.log('✅ Připojeno:', device.name);
-
-    const service = await server?.getPrimaryService('battery_service');
-    const characteristic = await service?.getCharacteristic('battery_level');
-
-    const value = await characteristic?.readValue();
-    console.log('🔋 Hodnota:', value?.getUint8(0));
-
-    // Nebo naslouchej změnám
-    characteristic?.addEventListener('characteristicvaluechanged', (event) => {
-      const val = (event.target as BluetoothRemoteGATTCharacteristic).value;
-      console.log('📈 Nová hodnota:', val?.getUint8(0));
-    });
-    await characteristic?.startNotifications();
-
-  } catch (error) {
-    console.error('❌ Chyba při připojení k BLE:', error);
+    const server = await device.gatt!.connect();
     
-    // Provide more helpful error messages based on error type
-    if (error.name === 'NotFoundError') {
-      const message = 
-        'Bluetooth je v prohlížeči zakázáno.\n\n' +
-        'Jak povolit Bluetooth:\n' +
-        '1. Zadejte do adresního řádku: chrome://flags\n' +
-        '2. Vyhledejte "Bluetooth"\n' +
-        '3. Povolte "Experimental Web Platform features"\n' +
-        '4. Restartujte prohlížeč';
+    const SERVICE_UUID = '0000b100-0000-1000-8000-00805f9b34fb';
+    const service = await server.getPrimaryService(SERVICE_UUID);
+
+    const CHARACTERISTIC_UUID = '0000b101-0000-1000-8000-00805f9b34fb';
+    const characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+
+    await characteristic.startNotifications();
+    
+    characteristic.addEventListener('characteristicvaluechanged', (event) => {
+      const value = (event.target as BluetoothRemoteGATTCharacteristic).value!;
+      const gsr = value.getUint8(0) * 256 + value.getUint8(1);
       
-      alert(message);
-    } else if (error.name === 'SecurityError') {
-      alert('Bluetooth vyžaduje zabezpečené připojení (HTTPS nebo localhost).');
-    } else if (error.name === 'NotAllowedError') {
-      alert('Přístup k Bluetooth byl zamítnut. Zkuste to znovu a povolte přístup.');
-    } else {
-      alert(`Chyba při připojení k BLE: ${error.message}`);
-    }
+      const data = { gsr, timestamp: new Date() };
+      
+      // Vypsání do konzole
+      console.log('📈 GSR:', gsr, 'Čas:', data.timestamp.toLocaleTimeString());
+      
+      // Volání callback funkce pro předání dat do komponenty
+      if (onDataReceived) {
+        onDataReceived(data);
+      }
+      
+      // Uložení do databáze
+      insertDataIntoDatabase(data);
+    });
+
+    console.log("✅ Připojeno k GATT serveru");
+    return server;
+    
+  } catch (error) {
+    console.error("❌ Bluetooth connection failed:", error);
+    throw error;
   }
+} 
+
+function insertDataIntoDatabase(data: { gsr: number; timestamp: Date }) {
+  console.log("💾 Ukládám data do databáze:", data);
+  // Zde implementujte logiku pro uložení do databáze
 }

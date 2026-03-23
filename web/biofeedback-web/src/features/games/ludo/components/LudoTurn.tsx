@@ -1,23 +1,34 @@
-import { Row, Col, Card, Button } from "react-bootstrap";
+import { Button } from "react-bootstrap";
 
-export default function LudoTurn({ playerOnTurn }) {
+type Props = {
+  playerOnTurn: boolean;
+  dice: number | null;
+  onRoll: () => void;
+};
+
+export default function LudoTurn({ playerOnTurn, dice, onRoll }: Props) {
   return (
     <div className="text-center py-2">
       {playerOnTurn ? (
         <>
           <h4 className="fw-bold mb-1">Jsi na řadě!</h4>
           <p className="text-muted small mb-3">Klikni na kostku a zkus štěstí</p>
-          <Button 
-            variant="primary" 
-            className="w-100 py-3 shadow-sm fw-bold border-0"
-            style={{ 
-              background: 'linear-gradient(45deg, #007bff, #0056b3)',
-              fontSize: '1.2rem',
-              borderRadius: '12px'
-            }}
-          >
-            🎲 HODIT KOSTKOU
-          </Button>
+
+          <div className="d-flex gap-2">
+            <Button
+              variant="primary"
+              className="w-100 py-3 shadow-sm fw-bold border-0"
+              style={{
+                background: "linear-gradient(45deg, #007bff, #0056b3)",
+                fontSize: "1.2rem",
+                borderRadius: "12px",
+              }}
+              onClick={onRoll}
+            >
+              🎲 HODIT KOSTKOU
+            </Button>
+            <div className="align-self-center">Dice: {dice ?? "-"}</div>
+          </div>
         </>
       ) : (
         <div className="py-2">
