@@ -77,8 +77,8 @@ export default function LudoBoard({ boardSize=600, pieces=[], onPieceClick=()=>{
           <Rect key={`${r}-${c}`} x={c*cellSize} y={r*cellSize} width={cellSize} height={cellSize} stroke="#aaa" />
         ))}
 
-        {pieces.map(p=>{
-          const coord = coordFor(p.posIndex);
+        {pieces.map(p => {
+          const coord = coordFor(p.posIndex, p);
           const x = coord.c * cellSize + cellSize/2;
           const y = coord.r * cellSize + cellSize/2;
           return (
@@ -91,4 +91,18 @@ export default function LudoBoard({ boardSize=600, pieces=[], onPieceClick=()=>{
       </Layer>
     </Stage>
   );
+}
+
+const getStartForPlayer = (playerId: string) => {
+  switch (playerId) {
+    case "r": return 0;   // červený start
+    case "b": return 13;  // modrý start
+    case "g": return 26;  // zelený start
+    case "y": return 39;  // žlutý start
+    default: return 0;
+  }
+};
+
+if (PATH_COORDS.length !== 52) {
+  console.warn('PATH_COORDS má', PATH_COORDS.length, 'položek — mělo by být 52.');
 }

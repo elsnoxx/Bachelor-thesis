@@ -68,7 +68,7 @@ export default function CreateGameModal({ show, onHide }: CreateGameModalProps) 
             const gameData = {
                 userId: userId,
                 name: formData.name,
-                gameType: 'ballance',
+                gameType: 'energybattle',
                 password: formData.password || "",
                 maxPlayers: formData.maxPlayers
             };
@@ -115,7 +115,7 @@ export default function CreateGameModal({ show, onHide }: CreateGameModalProps) 
     return (
         <Modal show={show} onHide={handleClose} size="lg" centered>
             <Modal.Header closeButton>
-                <Modal.Title>Vytvořit novou Ballance hru</Modal.Title>
+                <Modal.Title>Vytvořit novou Energy battle hru</Modal.Title>
             </Modal.Header>
             
             <Form onSubmit={handleSubmit}>
@@ -143,7 +143,7 @@ export default function CreateGameModal({ show, onHide }: CreateGameModalProps) 
                             value={formData.maxPlayers}
                             onChange={handleInputChange}
                             min="2"
-                            max="4"
+                            max="2"
                             isInvalid={!!errors.maxPlayers}
                         />
                         <Form.Control.Feedback type="invalid">

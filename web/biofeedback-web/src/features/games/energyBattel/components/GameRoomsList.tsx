@@ -27,7 +27,7 @@ export default function GameRoomsList() {
             const token = localStorage.getItem('authToken');
             const apiUrl = import.meta.env.VITE_API_URL;
             
-            const response = await fetch(`${apiUrl}/gamerooms?gameType=ballance`, {
+            const response = await fetch(`${apiUrl}/gamerooms?gameType=energybattle`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
