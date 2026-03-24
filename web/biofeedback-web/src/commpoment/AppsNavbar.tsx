@@ -20,31 +20,29 @@ export default function AppsNavbar() {
   return (
     <Navbar expand="lg" bg="light" variant="light" className="shadow-sm">
       <Container>
-        {/* LEVÁ STRANA - Brand + Navigace */}
-        <Navbar.Brand as={Link} to="/" className="me-4">
-          Biofeedback App
-        </Navbar.Brand>
-
+        <Navbar.Brand as={Link} to="/" className="me-4">Biofeedback App</Navbar.Brand>
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
-
         <Navbar.Collapse id="basic-navbar-nav">
-          {/* Hlavní navigace vlevo */}
-          <Nav className="me-auto">
-            {navigation.map((item) => (
-              <Nav.Link
-                key={item.name}
-                as={Link}
-                to={item.href}
-                active={location.pathname === item.href}
-              >
-                {item.name}
-              </Nav.Link>
-            ))}
-          </Nav>
+          {/* Hlavní navigace — zobrazit jen pokud je user */}
+          {user && (
+            <Nav className="me-auto">
+              {navigation.map((item) => (
+                <Nav.Link
+                  key={item.name}
+                  as={Link}
+                  to={item.href}
+                  active={location.pathname === item.href}
+                >
+                  {item.name}
+                </Nav.Link>
+              ))}
+            </Nav>
+          )}
 
-          {/* PRAVÁ STRANA - Notifikace + User menu */}
+          {/* PRAVÁ STRANA */}
           <Nav className="align-items-center">
-            <Nav.Link href="#" className="position-relative me-3"><Bell size={20} /></Nav.Link>
+            {/* zvonek — skryt pokud neni user */}
+            {user && <Nav.Link href="#" className="position-relative me-3"><Bell size={20} /></Nav.Link>}
 
             {user ? (
               <Dropdown align="end">
@@ -62,6 +60,7 @@ export default function AppsNavbar() {
                 <Nav.Link onClick={() => setShowLogin(true)} className="position-relative me-2" style={{cursor:"pointer"}}>
                   <PersonCircle size={20} />
                 </Nav.Link>
+                {/* skryt registraci pokud nechceš aby nebyla dostupná */}
                 <Button variant="outline-primary" size="sm" onClick={() => setShowRegister(true)}>Registrovat</Button>
               </>
             )}
