@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+﻿using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
@@ -13,6 +13,9 @@ using server.Services.DbServices.Interfaces;
 using server.Services.GameServices;
 using server.Services.Utils;
 using server.Services.Utils.Interfaces;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace server
 {
@@ -51,13 +54,24 @@ namespace server
                            .EnableSensitiveDataLogging()
                            .LogTo(Console.WriteLine, LogLevel.Information));
 
-            // In your Program.cs, configure JSON serialization to handle cycles:
-            //builder.Services.AddControllers()
-            //    .AddJsonOptions(options =>
-            //    {
-            //        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
-            //        options.JsonSerializerOptions.MaxDepth = 64; // Optional: increase max depth if needed
-            //    });
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Secret"])), // Musíš mít v appsettings.json nebo docker-compose
+                    ValidateIssuer = false, // Pro vývoj BP stačí false
+                    ValidateAudience = false,
+                    ClockSkew = TimeSpan.Zero
+                };
+            });
+
+            builder.Services.AddAuthorization();
 
             builder.Services.AddAutoMapper(typeof(Program));
 
@@ -69,10 +83,13 @@ namespace server
             builder.Services.AddScoped<ITokenRepository, TokenRepository>();
             builder.Services.AddScoped<IGameRoomRepository, GameRoomRepository>();
             builder.Services.AddScoped<ISesionRepository, SesionRepository>();
+            builder.Services.AddScoped<IStatisticRepository, StatisticRepository>();
+            builder.Services.AddScoped<IBiofeedbackRepository, BiofeedbackRepository>();
 
             builder.Services.AddScoped<IUserDbServices, UserDbServices>();
             builder.Services.AddScoped<IAuthDbService, AuthDbService>();
             builder.Services.AddScoped<IGameRoomService, GameRoomService>();
+            builder.Services.AddScoped<IStatisticServices, StatisticServices>();
             builder.Services.AddScoped<IJwtUtils, JwtUtils>();
 
             builder.Services.AddScoped<FileHelper>();

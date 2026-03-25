@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.VisualBasic;
 using Serilog;
 using server.Models.DB;
@@ -8,6 +9,7 @@ namespace server.Controllers
 {
     [ApiController]
     [Route("api/user")]
+    [Authorize]
     public class UserControler : ControllerBase
     {
         private readonly IUserDbServices _userDbServices;
