@@ -16,6 +16,7 @@ import CreateGamePage from './features/games/ludo/components/CreateGameModal';
 import BalanceGame from './features/games/ballance/BalanceGame';
 import BalanceGameList from './features/games/ballance/BalanceGameList';
 import EnergyBattelGameList from './features/games/energyBattel/EnergyBattelGameList';
+import MainPage from './pages/MainPage';
 
 interface BioData {
   playerId: string;
@@ -38,16 +39,7 @@ function App() {
 
       <div className="container mt-4">
         <Routes>
-          <Route path="/" element={
-            <>
-              <h2>Realtime Biofeedback</h2>
-              {/* <ul>
-                {data.map((d, i) => (
-                  <li key={i}>{d.playerId}: {d.value.toFixed(2)}</li>
-                ))}
-              </ul> */}
-            </>
-          } />
+          <Route path="/" element={<MainPage />} />
           <Route element={<RequireAuth><Outlet /></RequireAuth>}>
             <Route path="/games/energybattle" element={<EnergyBattelGameList />} />
             <Route path="/games/balance" element={<BalanceGameList />} />
