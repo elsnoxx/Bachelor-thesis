@@ -9,22 +9,26 @@ namespace server.Services.DbServices
     public class StatisticServices : IStatisticServices
     {
         private readonly IStatisticRepository _statisticRepo;
+        private readonly IUserRepository _userRepository;
         private readonly IBiofeedbackRepository _bioRepo;
 
-        public StatisticServices(IStatisticRepository statisticRepo, IBiofeedbackRepository bioRepo)
+        public StatisticServices(IStatisticRepository statisticRepo, IBiofeedbackRepository bioRepo, IUserRepository userRepository)
         {
             _statisticRepo = statisticRepo;
             _bioRepo = bioRepo;
+            _userRepository = userRepository;
         }
 
-        public async Task<IEnumerable<Statistic>> GetUserStatsAsync(Guid userId)
+        public async Task<IEnumerable<Statistic>> GetUserStatsAsync(string userEmail)
         {
-            return await _statisticRepo.GetStatistic(userId);
+            var user = await _userRepository.GetByEmailAsync(userEmail);
+            return await _statisticRepo.GetStatistic(user.Id);
         }
 
-        public async Task<IEnumerable<BioFeedback>> GetUserBiofeedbackAsync(Guid userId)
+        public async Task<IEnumerable<BioFeedback>> GetUserBiofeedbackAsync(string userEmail)
         {
-            return await _bioRepo.GetStatistic(userId);
+            var user = await _userRepository.GetByEmailAsync(userEmail);
+            return await _bioRepo.GetStatistic(user.Id);
         }
     }
 }
