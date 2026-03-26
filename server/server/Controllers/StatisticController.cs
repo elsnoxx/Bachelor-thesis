@@ -16,17 +16,17 @@ namespace server.Controllers
             _statisticServices = statisticServices;
         }
 
-        [HttpGet("user/{userId}")]
-        public async Task<IActionResult> GetUserStatistics(Guid userId)
+        [HttpGet("user/{userEmail}")]
+        public async Task<IActionResult> GetUserStatistics(string userEmail)
         {
-            var stats = await _statisticServices.GetUserStatsAsync(userId);
+            var stats = await _statisticServices.GetUserStatsAsync(userEmail);
             return Ok(stats);
         }
 
-        [HttpGet("biofeedback/{userId}")]
-        public async Task<IActionResult> GetUserBiofeedback(Guid userId)
+        [HttpGet("biofeedback/{userEmail}")]
+        public async Task<IActionResult> GetUserBiofeedback(string userEmail)
         {
-            var data = await _statisticServices.GetUserBiofeedbackAsync(userId);
+            var data = await _statisticServices.GetUserBiofeedbackAsync(userEmail);
             return Ok(data);
         }
     }

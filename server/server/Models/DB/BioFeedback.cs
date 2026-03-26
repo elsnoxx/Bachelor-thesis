@@ -5,6 +5,7 @@
         public int Id { get; set; }
 
         public Guid SessionId { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore]
         public Session Session { get; set; } = null!;
 
         public float GsrValue { get; set; }
