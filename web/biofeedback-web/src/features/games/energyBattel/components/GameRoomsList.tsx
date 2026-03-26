@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Alert, Spinner, Button, Badge } from 'react-bootstrap';
+import PasswordModal from '../../general/PasswordModal';
+import { useNavigate } from 'react-router-dom';
 
 interface GameRoom {
     id: string;
@@ -18,6 +20,11 @@ export default function GameRoomsList() {
     const [gameRooms, setGameRooms] = useState<GameRoom[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const navigate = useNavigate();
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+    const [selectedRoomName, setSelectedRoomName] = useState<string | undefined>(undefined);
+    const [joining, setJoining] = useState(false);
 
     const fetchGameRooms = async () => {
         try {
@@ -53,11 +60,62 @@ export default function GameRoomsList() {
         }
     };
 
-    const handleJoinRoom = (roomId: string) => {
-        // Zde by byla logika pro připojení do místnosti
-        console.log('Připojování do místnosti:', roomId);
-        // Například redirect na herní obrazovku
-        // navigate(`/ludo/game/${roomId}`);
+    const handleJoinRoom = (room: GameRoom) => {
+        if (room.password) {
+            setSelectedRoomId(room.id);
+            setSelectedRoomName(room.name);
+            setShowPasswordModal(true);
+        } else {
+            executeJoin(room.id, null);
+        }
+    };
+
+    const executeJoin = async (roomId: string | null, password: string | null) => {
+        if (!roomId) { alert('Neznámé ID místnosti'); return; }
+        setJoining(true);
+        try {
+            const token = localStorage.getItem('token');
+            const apiUrl = import.meta.env.VITE_API_URL;
+            const userEmail = getUserEmail();
+            if (!userEmail) { alert('Nelze určit email. Přihlas se.'); setJoining(false); return; }
+
+            const res = await fetch(`${apiUrl}/gamerooms/${roomId}/join`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({ UserEmail: userEmail, Password: password ?? '' })
+            });
+
+            if (!res.ok) {
+                const data = await res.json().catch(()=>null);
+                throw new Error(data?.title || data?.message || `Server ${res.status}`);
+            }
+
+            // po úspěšném joinu redirect na hru
+            navigate(`/energybattle/game/${roomId}`);
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Chyba při připojování');
+        } finally {
+            setJoining(false);
+            setShowPasswordModal(false);
+            setSelectedRoomId(null);
+            setSelectedRoomName(undefined);
+            await fetchGameRooms();
+        }
+    };
+
+    const getUserEmail = (): string | null => {
+        const userJson = localStorage.getItem('user');
+        if (userJson) {
+            try { return JSON.parse(userJson).email || null; } catch {}
+        }
+        const token = localStorage.getItem('token');
+        if (token) {
+            try { const p = JSON.parse(atob(token.split('.')[1])); return p.email || p.sub || null; } catch {}
+        }
+        return null;
     };
 
     useEffect(() => {
@@ -145,7 +203,7 @@ export default function GameRoomsList() {
                                 <Button
                                     variant="success"
                                     size="sm"
-                                    onClick={() => handleJoinRoom(room.id)}
+                                    onClick={() => handleJoinRoom(room)}
                                 >
                                     Připojit se
                                 </Button>
@@ -154,6 +212,14 @@ export default function GameRoomsList() {
                     ))}
                 </tbody>
             </Table>
+
+            <PasswordModal
+                show={showPasswordModal}
+                onHide={() => { setShowPasswordModal(false); setSelectedRoomId(null); setSelectedRoomName(undefined); }}
+                roomName={selectedRoomName}
+                submitting={joining}
+                onSubmit={(pwd) => { if (selectedRoomId) executeJoin(selectedRoomId, pwd); }}
+            />
         </div>
     );
 }

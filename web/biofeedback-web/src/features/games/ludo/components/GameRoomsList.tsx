@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Alert, Spinner, Button, Badge } from 'react-bootstrap';
+import PasswordModal from '../../general/PasswordModal';
+import { useNavigate } from 'react-router-dom';
 
 interface GameRoom {
     id: string;
@@ -18,6 +20,11 @@ export default function GameRoomsList() {
     const [gameRooms, setGameRooms] = useState<GameRoom[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+    const [selectedRoomName, setSelectedRoomName] = useState<string | undefined>(undefined);
+    const [joinPassword, setJoinPassword] = useState('');
+    const [joining, setJoining] = useState(false);
 
     const fetchGameRooms = async () => {
         try {
@@ -39,7 +46,7 @@ export default function GameRoomsList() {
             }
 
             const result: ApiResponse = await response.json();
-            
+
             if (result.error) {
                 throw new Error(result.error);
             }
@@ -53,11 +60,64 @@ export default function GameRoomsList() {
         }
     };
 
-    const handleJoinRoom = (roomId: string) => {
-        // Zde by byla logika pro připojení do místnosti
-        console.log('Připojování do místnosti:', roomId);
-        // Například redirect na herní obrazovku
-        // navigate(`/ludo/game/${roomId}`);
+    const handleJoinRoom = async (room: GameRoom) => {
+        if (room.password) {
+            // Místnost má heslo, otevřeme modal
+            setSelectedRoomId(room.id);
+            setShowPasswordModal(true);
+            setSelectedRoomName(room.name);
+        } else {
+            // Místnost nemá heslo, rovnou se připojíme
+            await executeJoin(room.id, null);
+        }
+    };
+
+    const executeJoin = async (roomId: string | null, password: string | null) => {
+        if (!roomId) { alert('Neznámé ID místnosti'); return; }
+        setJoining(true);
+        try {
+            const token = localStorage.getItem('token');
+            const apiUrl = import.meta.env.VITE_API_URL;
+            const userEmail = getUserEmail();
+            if (!userEmail) { alert('Nelze určit uživatelský email. Přihlaste se prosím.'); return; }
+
+            const res = await fetch(`${apiUrl}/gamerooms/${roomId}/join`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({ UserEmail: userEmail, Password: password ?? '' })
+            });
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => null);
+                throw new Error(data?.title || data?.message || `Server ${res.status}`);
+            }
+
+            alert('Úspěšně připojeno!');
+            setShowPasswordModal(false);
+            setSelectedRoomId(null);
+            setSelectedRoomName(undefined);
+            await fetchGameRooms();
+            navigate(`/ludo/game/${roomId}`)
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Chyba při připojování');
+        } finally {
+            setJoining(false);
+        }
+    };
+
+    const getUserEmail = (): string | null => {
+        const userJson = localStorage.getItem('user');
+        if (userJson) {
+            try { return JSON.parse(userJson).email || null; } catch {}
+        }
+        const token = localStorage.getItem('token');
+        if (token) {
+            try { const payload = JSON.parse(atob(token.split('.')[1])); return payload.email || payload.sub || null; } catch {}
+        }
+        return null;
     };
 
     useEffect(() => {
@@ -103,7 +163,7 @@ export default function GameRoomsList() {
                     Obnovit
                 </Button>
             </div>
-            
+
             <Table striped bordered hover responsive>
                 <thead className="table-dark">
                     <tr>
@@ -145,7 +205,7 @@ export default function GameRoomsList() {
                                 <Button
                                     variant="success"
                                     size="sm"
-                                    onClick={() => handleJoinRoom(room.id)}
+                                    onClick={() => handleJoinRoom(room)}
                                 >
                                     Připojit se
                                 </Button>
@@ -154,6 +214,21 @@ export default function GameRoomsList() {
                     ))}
                 </tbody>
             </Table>
+
+            {showPasswordModal && (
+                < PasswordModal
+                    show={showPasswordModal}
+                    onHide={() => setShowPasswordModal(false)}
+                    roomName={selectedRoomName}
+                    submitting={joining} // Předáme stav načítání
+                    onSubmit={(password) => {
+                        // password přijde z vnitřku modalu
+                        if (selectedRoomId) {
+                            executeJoin(selectedRoomId, password);
+                        }
+                    }}
+                />
+            )}
         </div>
     );
 }

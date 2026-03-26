@@ -77,7 +77,7 @@ namespace server.Services.DbServices
         {
             try
             {
-                var user = await _userRepository.GetByIdAsync(request.UserId);
+                var user = await _userRepository.GetByEmailAsync(request.UserEmail);
                 var gameRoom = await _gameRoomRepository.GameRoomById(gameRoomId);
                 if (user == null || gameRoom == null)
                 {
@@ -91,7 +91,7 @@ namespace server.Services.DbServices
                     Log.Error("Game Room is full.");    
                     return Result<bool>.Fail("Game Room is full.");
                 }
-                else if ( usersInRoom.Contains(request.UserId) == true )
+                else if ( usersInRoom.Contains(user.Id) == true )
                 {
                     Log.Error("User already in the Game Room.");
                     return Result<bool>.Fail("User already in the Game Room.");
@@ -106,16 +106,16 @@ namespace server.Services.DbServices
                     }
                     else
                     {
-                        Log.Debug("User {UserId} provided correct password for room {RoomId}", request.UserId, gameRoomId);
+                        Log.Debug("User {UserId} provided correct password for room {RoomId}", user.Id, gameRoomId);
                     }
                 }
 
-                var session = CreateSesion(request.UserId, gameRoomId);
+                var session = CreateSesion(user.Id, gameRoomId);
 
                 var added = await _sesionRepository.AddUserToSesion(session);
                 if (added)
                 {
-                    Log.Debug("User {UserId} joined game room {RoomId}", request.UserId, gameRoomId);
+                    Log.Debug("User {UserId} joined game room {RoomId}", user.Id, gameRoomId);
                     return Result<bool>.Ok(true);
                 }
                 Log.Error("Failed to add user to session");

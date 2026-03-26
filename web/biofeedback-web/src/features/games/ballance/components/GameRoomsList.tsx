@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Alert, Spinner, Button, Badge } from 'react-bootstrap';
+import PasswordModal from '../../general/PasswordModal';
+import { useNavigate } from 'react-router-dom';
 
 interface GameRoom {
     id: string;
@@ -18,12 +20,17 @@ export default function GameRoomsList() {
     const [gameRooms, setGameRooms] = useState<GameRoom[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+    const [selectedRoomName, setSelectedRoomName] = useState<string | undefined>(undefined);
+    const [joinPassword, setJoinPassword] = useState('');
+    const [joining, setJoining] = useState(false);
 
     const fetchGameRooms = async () => {
         try {
             setLoading(true);
             setError(null);
-            
+
             const token = localStorage.getItem('token');
             const apiUrl = import.meta.env.VITE_API_URL;
             const response = await fetch(`${apiUrl}/gamerooms?gameType=ballance`, {
@@ -39,7 +46,7 @@ export default function GameRoomsList() {
             }
 
             const result: ApiResponse = await response.json();
-            
+
             if (result.error) {
                 throw new Error(result.error);
             }
@@ -53,11 +60,67 @@ export default function GameRoomsList() {
         }
     };
 
-    const handleJoinRoom = (roomId: string) => {
-        // Zde by byla logika pro připojení do místnosti
-        console.log('Připojování do místnosti:', roomId);
-        // Například redirect na herní obrazovku
-        // navigate(`/ludo/game/${roomId}`);
+    const handleJoinRoom = async (room: GameRoom) => {
+        if (room.password) {
+            // Místnost má heslo, otevřeme modal
+            setSelectedRoomId(room.id);
+            setShowPasswordModal(true);
+            setSelectedRoomName(room.name);
+        } else {
+            // Místnost nemá heslo, rovnou se připojíme
+            await executeJoin(room.id, null);
+        }
+    };
+
+    const executeJoin = async (roomId: string, password: string | null) => {
+        setJoining(true);
+        try {
+            const token = localStorage.getItem('token');
+            const apiUrl = import.meta.env.VITE_API_URL;
+            const userJson = localStorage.getItem('user');
+            let userId: string | null = null;
+            if (userJson) {
+                try {
+                    const userObj = JSON.parse(userJson);
+                    userId = userObj.email || null;
+                } catch (e) {
+                    console.warn('Invalid user JSON in localStorage.user', e);
+                }
+            }
+
+            // Získání emailu z tokenu (pokud ho backend vyžaduje v request body)
+            let userEmail = "";
+            if (token) {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                userEmail = payload.email || payload.sub;
+            }
+
+            const response = await fetch(`${apiUrl}/gamerooms/${roomId}/join`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    UserEmail: userId,
+                    Password: password
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Nepodařilo se připojit k místnosti');
+            }
+
+            alert('Úspěšně připojeno!');
+            setShowPasswordModal(false);
+            setJoinPassword('');
+            navigate(`/ballance/game/${roomId}`);
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Chyba při připojování');
+        } finally {
+            setJoining(false);
+        }
     };
 
     useEffect(() => {
@@ -103,7 +166,7 @@ export default function GameRoomsList() {
                     Obnovit
                 </Button>
             </div>
-            
+
             <Table striped bordered hover responsive>
                 <thead className="table-dark">
                     <tr>
@@ -145,7 +208,7 @@ export default function GameRoomsList() {
                                 <Button
                                     variant="success"
                                     size="sm"
-                                    onClick={() => handleJoinRoom(room.id)}
+                                    onClick={() => handleJoinRoom(room)}
                                 >
                                     Připojit se
                                 </Button>
@@ -154,6 +217,21 @@ export default function GameRoomsList() {
                     ))}
                 </tbody>
             </Table>
+
+            {showPasswordModal && (
+                < PasswordModal
+                    show={showPasswordModal}
+                    onHide={() => setShowPasswordModal(false)}
+                    roomName={selectedRoomName}
+                    submitting={joining} // Předáme stav načítání
+                    onSubmit={(password) => {
+                        // password přijde z vnitřku modalu
+                        if (selectedRoomId) {
+                            executeJoin(selectedRoomId, password);
+                        }
+                    }}
+                />
+            )}
         </div>
     );
 }
