@@ -4,7 +4,7 @@ namespace server.Services.DbServices.Interfaces
 {
     public interface IStatisticServices
     {
-        Task<IEnumerable<Statistic>> GetUserStatsAsync(Guid userId);
-        Task<IEnumerable<BioFeedback>> GetUserBiofeedbackAsync(Guid userId);
+        Task<IEnumerable<Statistic>> GetUserStatsAsync(string userId);
+        Task<IEnumerable<BioFeedback>> GetUserBiofeedbackAsync(string userId);
     }
 }
