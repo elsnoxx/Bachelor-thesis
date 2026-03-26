@@ -64,7 +64,7 @@ namespace server
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Secret"])), // Musíš mít v appsettings.json nebo docker-compose
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])), // Musíš mít v appsettings.json nebo docker-compose
                     ValidateIssuer = false, // Pro vývoj BP stačí false
                     ValidateAudience = false,
                     ClockSkew = TimeSpan.Zero
