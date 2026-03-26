@@ -24,9 +24,8 @@ export default function GameRoomsList() {
             setLoading(true);
             setError(null);
             
-            const token = localStorage.getItem('authToken');
+            const token = localStorage.getItem('token');
             const apiUrl = import.meta.env.VITE_API_URL;
-            
             const response = await fetch(`${apiUrl}/gamerooms?gameType=ballance`, {
                 method: 'GET',
                 headers: {

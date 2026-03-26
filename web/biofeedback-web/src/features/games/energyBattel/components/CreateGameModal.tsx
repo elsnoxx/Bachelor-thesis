@@ -48,6 +48,9 @@ export default function CreateGameModal({ show, onHide }: CreateGameModalProps) 
             newErrors.name = 'Název hry je povinný';
         }
 
+        if (formData.maxPlayers < 2 || formData.maxPlayers > 4) {
+            newErrors.maxPlayers = 'Počet hráčů musí být mezi 2 a 4';
+        }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -62,49 +65,65 @@ export default function CreateGameModal({ show, onHide }: CreateGameModalProps) 
 
         setIsSubmitting(true);
 
-        try {
-            // Automaticky přidáme gameType: "ludo"
-            let userId = localStorage.getItem('authToken');
-            const gameData = {
-                userId: userId,
-                name: formData.name,
-                gameType: 'energybattle',
-                password: formData.password || "",
-                maxPlayers: formData.maxPlayers
-            };
-
-            console.log('Creating game room with data:', gameData);
-            let token = localStorage.getItem('authToken');
-            // Příklad API callu:
-            const apiUrl = import.meta.env.VITE_API_URL;
-            const response = await fetch(`${apiUrl}/gamerooms`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(gameData)
-            });
-            console.log('API response:', response);
-            
-            alert('Hra byla úspěšně vytvořena!');
-            onHide(); // Zavřít modal
-            
-            // Reset formuláře
-            setFormData({
-                userId: '',
-                name: '',
-                password: '',
-                maxPlayers: 2
-            });
-            setErrors({});
-            
-        } catch (error) {
-            console.error('Chyba při vytváření hry:', error);
-            alert('Nastala chyba při vytváření hry');
-        } finally {
-            setIsSubmitting(false);
+        // získej userId bezpečně z localStorage nebo z tokenu
+        const userJson = localStorage.getItem('user');
+        let userId: string | null = null;
+        if (userJson) {
+            try {
+                const userObj = JSON.parse(userJson);
+                userId = userObj.email ||  null;
+            } catch (e) {
+                console.warn('Invalid user JSON in localStorage.user', e);
+            }
         }
+
+        let token = localStorage.getItem('token');
+        if (!userId && token && token !== 'null') {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                userId = payload.sub || payload.id || payload.userId || null;
+            } catch (e) {
+                console.warn('Cannot decode JWT to get userId', e);
+            }
+        }
+
+        if (!userId) {
+            alert('Nelze zjistit userId. Přihlaste se prosím znovu.');
+            setIsSubmitting(false);
+            return;
+        }
+
+        const gameData = {
+            userId,
+            name: formData.name,
+            gameType: 'energybattle',
+            password: formData.password || '',
+            maxPlayers: formData.maxPlayers
+        };
+
+        const apiUrl = import.meta.env.VITE_API_URL;
+        const headers: Record<string,string> = { 'Content-Type': 'application/json' };
+        if (token && token !== 'null') headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${apiUrl}/gamerooms`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(gameData)
+        });
+        console.log('API response:', response);
+            
+        alert('Hra byla úspěšně vytvořena!');
+        onHide(); // Zavřít modal
+            
+        // Reset formuláře
+        setFormData({
+            userId: '',
+            name: '',
+            password: '',
+            maxPlayers: 2
+        });
+        setErrors({});
+            
     };
 
     const handleClose = () => {
@@ -115,7 +134,7 @@ export default function CreateGameModal({ show, onHide }: CreateGameModalProps) 
     return (
         <Modal show={show} onHide={handleClose} size="lg" centered>
             <Modal.Header closeButton>
-                <Modal.Title>Vytvořit novou Energy battle hru</Modal.Title>
+                <Modal.Title>Vytvořit novou LUDO hru</Modal.Title>
             </Modal.Header>
             
             <Form onSubmit={handleSubmit}>
@@ -136,14 +155,14 @@ export default function CreateGameModal({ show, onHide }: CreateGameModalProps) 
                     </Form.Group>
 
                     <Form.Group className="mb-3">
-                        <Form.Label>Maximální počet hráčů</Form.Label>
+                        <Form.Label>Maximální počet hráčů *</Form.Label>
                         <Form.Control
                             type="number"
                             name="maxPlayers"
                             value={formData.maxPlayers}
                             onChange={handleInputChange}
                             min="2"
-                            max="2"
+                            max="4"
                             isInvalid={!!errors.maxPlayers}
                         />
                         <Form.Control.Feedback type="invalid">
