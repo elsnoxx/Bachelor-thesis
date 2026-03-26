@@ -29,6 +29,15 @@ namespace server.Services.DbServices
         {
             var gameRooms = await _gameRoomRepository.AllGameRoomsAsync(gameType);
             var gameRoomsDTO = _mapper.Map<IEnumerable<GameRoomDTO>>(gameRooms);
+
+            for(var i = 0; i < gameRooms.Count(); i++)
+            {
+                if (gameRooms.ElementAt(i).PasswordHash != null)
+                {
+                    gameRoomsDTO.ElementAt(i).password = "***";
+                }
+            }
+
             return Result<IEnumerable<GameRoomDTO>>.Ok(gameRoomsDTO);
         }
 
@@ -48,7 +57,8 @@ namespace server.Services.DbServices
 
         public async Task<Result<bool>> CreateGameRoomAsync(GameRoomCreationDTO gameRoomDTO)
         {
-            var gameRoom = CreateGameRoom(gameRoomDTO);
+            var user = await _userRepository.GetByEmailAsync(gameRoomDTO.UserId);
+            var gameRoom = CreateGameRoom(gameRoomDTO, user.Id);
             try
             {
                 await _gameRoomRepository.CreateGameRoomAsync(gameRoom);
@@ -152,7 +162,7 @@ namespace server.Services.DbServices
         }
 
 
-        private GameRoom CreateGameRoom(GameRoomCreationDTO gameRoomDTO)
+        private GameRoom CreateGameRoom(GameRoomCreationDTO gameRoomDTO, Guid userId)
         {
             var password = string.IsNullOrWhiteSpace(gameRoomDTO.password) ? null : gameRoomDTO.password;
 
@@ -162,7 +172,7 @@ namespace server.Services.DbServices
                 Name = gameRoomDTO.Name,
                 GameType = gameRoomDTO.GameType,
                 MaxPlayers = gameRoomDTO.MaxPlayers,
-                CreatedBy = gameRoomDTO.UserId,
+                CreatedBy = userId,
                 PasswordHash = password != null ? BCrypt.Net.BCrypt.HashPassword(password) : null,
                 Status = "Waiting",
                 CreatedAt = DateTime.UtcNow
