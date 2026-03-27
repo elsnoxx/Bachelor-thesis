@@ -20,6 +20,7 @@ export default function GameRoomsList() {
     const [gameRooms, setGameRooms] = useState<GameRoom[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const navigate = useNavigate();
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
     const [selectedRoomName, setSelectedRoomName] = useState<string | undefined>(undefined);
@@ -72,6 +73,18 @@ export default function GameRoomsList() {
         }
     };
 
+    const getUserEmail = (): string | null => {
+        const userJson = localStorage.getItem('user');
+        if (userJson) {
+            try { return JSON.parse(userJson).email || null; } catch {}
+        }
+        const token = localStorage.getItem('token');
+        if (token) {
+            try { const p = JSON.parse(atob(token.split('.')[1])); return p.email || p.sub || null; } catch {}
+        }
+        return null;
+    };
+
     const executeJoin = async (roomId: string | null, password: string | null) => {
         if (!roomId) { alert('Neznámé ID místnosti'); return; }
         setJoining(true);
@@ -79,7 +92,7 @@ export default function GameRoomsList() {
             const token = localStorage.getItem('token');
             const apiUrl = import.meta.env.VITE_API_URL;
             const userEmail = getUserEmail();
-            if (!userEmail) { alert('Nelze určit uživatelský email. Přihlaste se prosím.'); return; }
+            if (!userEmail) { alert('Nelze určit email. Přihlas se.'); setJoining(false); return; }
 
             const res = await fetch(`${apiUrl}/gamerooms/${roomId}/join`, {
                 method: 'POST',
@@ -91,34 +104,23 @@ export default function GameRoomsList() {
             });
 
             if (!res.ok) {
-                const data = await res.json().catch(() => null);
+                const data = await res.json().catch(()=>null);
                 throw new Error(data?.title || data?.message || `Server ${res.status}`);
             }
 
-            alert('Úspěšně připojeno!');
-            setShowPasswordModal(false);
-            setSelectedRoomId(null);
-            setSelectedRoomName(undefined);
-            await fetchGameRooms();
-            navigate(`/ludo/game/${roomId}`)
+            // po úspěšném joinu redirect na hru
+            navigate(`/ludo/game/${roomId}`);
         } catch (err) {
             alert(err instanceof Error ? err.message : 'Chyba při připojování');
         } finally {
             setJoining(false);
+            setShowPasswordModal(false);
+            setSelectedRoomId(null);
+            setSelectedRoomName(undefined);
+            await fetchGameRooms();
         }
     };
 
-    const getUserEmail = (): string | null => {
-        const userJson = localStorage.getItem('user');
-        if (userJson) {
-            try { return JSON.parse(userJson).email || null; } catch {}
-        }
-        const token = localStorage.getItem('token');
-        if (token) {
-            try { const payload = JSON.parse(atob(token.split('.')[1])); return payload.email || payload.sub || null; } catch {}
-        }
-        return null;
-    };
 
     useEffect(() => {
         fetchGameRooms();

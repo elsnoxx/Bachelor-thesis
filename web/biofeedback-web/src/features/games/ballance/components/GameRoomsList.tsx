@@ -19,6 +19,7 @@ interface ApiResponse {
 export default function GameRoomsList() {
     const [gameRooms, setGameRooms] = useState<GameRoom[]>([]);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
     const [error, setError] = useState<string | null>(null);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
@@ -72,54 +73,51 @@ export default function GameRoomsList() {
         }
     };
 
-    const executeJoin = async (roomId: string, password: string | null) => {
+    const getUserEmail = (): string | null => {
+        const userJson = localStorage.getItem('user');
+        if (userJson) {
+            try { return JSON.parse(userJson).email || null; } catch {}
+        }
+        const token = localStorage.getItem('token');
+        if (token) {
+            try { const p = JSON.parse(atob(token.split('.')[1])); return p.email || p.sub || null; } catch {}
+        }
+        return null;
+    };
+
+    const executeJoin = async (roomId: string | null, password: string | null) => {
+        if (!roomId) { alert('Neznámé ID místnosti'); return; }
         setJoining(true);
         try {
             const token = localStorage.getItem('token');
             const apiUrl = import.meta.env.VITE_API_URL;
-            const userJson = localStorage.getItem('user');
-            let userId: string | null = null;
-            if (userJson) {
-                try {
-                    const userObj = JSON.parse(userJson);
-                    userId = userObj.email || null;
-                } catch (e) {
-                    console.warn('Invalid user JSON in localStorage.user', e);
-                }
-            }
+            const userEmail = getUserEmail();
+            if (!userEmail) { alert('Nelze určit email. Přihlas se.'); setJoining(false); return; }
 
-            // Získání emailu z tokenu (pokud ho backend vyžaduje v request body)
-            let userEmail = "";
-            if (token) {
-                const payload = JSON.parse(atob(token.split('.')[1]));
-                userEmail = payload.email || payload.sub;
-            }
-
-            const response = await fetch(`${apiUrl}/gamerooms/${roomId}/join`, {
+            const res = await fetch(`${apiUrl}/gamerooms/${roomId}/join`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
                 },
-                body: JSON.stringify({
-                    UserEmail: userId,
-                    Password: password
-                })
+                body: JSON.stringify({ UserEmail: userEmail, Password: password ?? '' })
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Nepodařilo se připojit k místnosti');
+            if (!res.ok) {
+                const data = await res.json().catch(()=>null);
+                throw new Error(data?.title || data?.message || `Server ${res.status}`);
             }
 
-            alert('Úspěšně připojeno!');
-            setShowPasswordModal(false);
-            setJoinPassword('');
+            // po úspěšném joinu redirect na hru
             navigate(`/ballance/game/${roomId}`);
         } catch (err) {
             alert(err instanceof Error ? err.message : 'Chyba při připojování');
         } finally {
             setJoining(false);
+            setShowPasswordModal(false);
+            setSelectedRoomId(null);
+            setSelectedRoomName(undefined);
+            await fetchGameRooms();
         }
     };
 
