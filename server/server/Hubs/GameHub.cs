@@ -8,45 +8,47 @@ namespace server.Hubs
 {
     public class GameHub : Hub
     {
-        public readonly GameManager _gameManager;
+        private readonly GameManager _gameManager;
 
         public GameHub(GameManager gameManager)
         {
             _gameManager = gameManager;
         }
-        // Když se připojí klient
-        public override async Task OnConnectedAsync()
+
+        // Metoda, kterou volá tvůj frontend přes .invoke("JoinRoom", roomId)
+        public async Task JoinRoom(string roomId)
         {
-            Log.Information($"Client connected: {Context.ConnectionId}");
-            
-            await base.OnConnectedAsync();
+            // Přidá spojení do logické skupiny SignalR
+            await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
+
+            Log.Information($"Client {Context.ConnectionId} joined room: {roomId}");
+
+            // Volitelně informuj ostatní v místnosti
+            await Clients.Group(roomId).SendAsync("PlayerJoined", Context.ConnectionId);
         }
 
-        public async Task JoinGame(string playerId, string gameType)
+        // Metoda pro posílání dat specifických pro EnergyBattle
+        public async Task SendEnergyData(string roomId, double value)
         {
-            Log.Information($"[{playerId}] joined the game.");
-            _gameManager.AddPlayerToGame(gameType, Context.ConnectionId, playerId);
-            await Clients.Others.SendAsync("PlayerJoined", playerId, gameType);
-            Log.Information($"Players in {gameType}:");
+            // Získáme ID uživatele z claimů (pokud jsi přihlášen)
+            var userId = Context.User?.Identity?.Name ?? Context.ConnectionId;
+
+            var packet = new
+            {
+                playerId = userId,
+                value = value,
+                timestamp = DateTime.UtcNow
+            };
+
+            // Pošle data VŠEM v dané místnosti (včetně odesílatele)
+            await Clients.Group(roomId).SendAsync("ReceiveEnergyData", packet);
         }
 
-        // Když klient pošle biofeedback data
-        public async Task SendBioData(string playerId, string gameType, double value)
-        {
-            Log.Information($"[{playerId}] → {value}");
-
-            // Pošli všem ostatním
-            _gameManager.GetPlayersInGame(gameType);
-            await Clients.All.SendAsync("ReceiveBioData", playerId, value);
-        }
-
-        // Když se klient odpojí
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
             Log.Information($"❌ Client disconnected: {Context.ConnectionId}");
             _gameManager.RemovePlayer(Context.ConnectionId);
             await base.OnDisconnectedAsync(exception);
         }
-
     }
 }

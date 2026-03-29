@@ -1,67 +1,104 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import { Container, Row, Col, Card, Spinner } from "react-bootstrap";
+import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
 import LudoBoard from "./components/LudoBoard";
-import { Container, Row, Col, Card, Button } from "react-bootstrap";
 import LudoTurn from "./components/LudoTurn";
 import LudoChat from "./components/LudoChat";
 import type { Piece } from "./logic/LudoEngine";
-import { rollDice, applyMove, canMovePiece, getStartForPlayer } from "./logic/LudoEngine";
 
-const initialPieces: Piece[] = [
-  { id: "r1", playerId: "r", posIndex: 0 },
-  { id: "r2", playerId: "r", posIndex: 1 },
-  { id: "b1", playerId: "b", posIndex: 0 },
-  { id: "g1", playerId: "g", posIndex: 0 },
-];
+// DTO, které nám posílá server (Source of Truth)
+interface LudoGameState {
+  pieces: Piece[];
+  currentPlayerId: string;
+  diceValue: number | null;
+  isWaitingForRoll: boolean;
+}
 
 export default function LudoGame() {
-  const [pieces, setPieces] = useState<Piece[]>(initialPieces);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [dice, setDice] = useState<number | null>(null);
-  const currentPlayer = { id: "r", color: "RED", startIndex: getStartForPlayer("r") };
+  const { roomId } = useParams<{ roomId: string }>();
+  const [connection, setConnection] = useState<HubConnection | null>(null);
+  
+  // Všechna herní data teď pocházejí z jednoho objektu stavu
+  const [gameState, setGameState] = useState<LudoGameState | null>(null);
+  const [myPlayerId, setMyPlayerId] = useState<string>("");
 
-  const handleRoll = () => setDice(rollDice());
+  useEffect(() => {
+    if (!roomId) return;
 
-  const handleSelectOrMove = (pieceIdOrRow: number | string, col?: number) => {
-    // pokud klik na políčko (row,col) tak koliduje s koncepcí posIndex; tento handler budeme volat z LudoBoard
-  };
+    const conn = new HubConnectionBuilder()
+      .withUrl(`${import.meta.env.VITE_API_URL}/gamehub`, {
+        accessTokenFactory: () => localStorage.getItem("token") ?? ""
+      })
+      .withAutomaticReconnect()
+      .build();
 
-  const handlePieceClick = (pieceId: string) => {
-    if (!dice) return setSelected(pieceId);
-    const piece = pieces.find(p => p.id === pieceId);
-    if (!piece) return;
-    if (!canMovePiece(piece, dice, currentPlayer as any, pieces)) return;
-    const res = applyMove(piece, dice, currentPlayer as any, pieces);
-    if (!res.success) return;
-    setPieces(prev => {
-      const others = prev.filter(p => p.id !== pieceId && !res.captures.find(c => c.id === p.id));
-      const updated = [res.moved, ...others, ...res.captures];
-      return updated;
+    // SERVER NÁM POSÍLÁ AKTUALIZACI CELÉHO STAVU
+    conn.on("UpdateLudoState", (newState: LudoGameState) => {
+      setGameState(newState);
     });
-    setDice(null);
-    setSelected(null);
+
+    conn.start()
+      .then(() => {
+        conn.invoke("JoinRoom", roomId);
+        // Získáme své ID z tokenu/systému (zjednodušeno)
+        setMyPlayerId("r"); 
+      })
+      .catch(console.error);
+
+    setConnection(conn);
+    return () => { conn.stop(); };
+  }, [roomId]);
+
+  // LOGIKA: Místo počítání posunu jen pošleme serveru ID figurky
+  const handlePieceClick = (pieceId: string) => {
+    if (!connection || !gameState || gameState.currentPlayerId !== myPlayerId) return;
+    
+    // Server zkontroluje, jestli je tah validní, provede ho a všem pošle UpdateLudoState
+    connection.invoke("LudoMovePiece", roomId, pieceId).catch(console.error);
   };
+
+  // LOGIKA: Kostku hází server
+  const handleRoll = () => {
+    if (!connection || !roomId) return;
+    connection.invoke("LudoRollDice", roomId).catch(console.error);
+  };
+
+  if (!gameState) return <div className="text-center p-5"><Spinner /> Načítání hry...</div>;
+
+  const isMyTurn = gameState.currentPlayerId === myPlayerId;
 
   return (
     <Container fluid className="py-4">
       <Row className="justify-content-center g-4">
         <Col xs={12} lg="auto" className="d-flex justify-content-center">
-          <Card className="shadow-lg border-0 overflow-hidden">
+          <Card className="shadow-lg border-0">
             <Card.Body className="p-2 p-sm-4">
               <div style={{ width: "100%", maxWidth: "min(90vw,650px)", aspectRatio: "1/1" }}>
-                <LudoBoard pieces={pieces} onPieceClick={handlePieceClick} />
+                {/* Board jen tupě zobrazuje data z gameState */}
+                <LudoBoard 
+                    pieces={gameState.pieces} 
+                    onPieceClick={handlePieceClick} 
+                />
               </div>
             </Card.Body>
           </Card>
         </Col>
+        
         <Col xs={12} lg={4} xl={3}>
           <div className="d-flex flex-column gap-3">
             <Card>
               <Card.Body>
-                <LudoTurn playerOnTurn={true} dice={dice} onRoll={handleRoll} />
+                {/* LudoTurn dostává info, zda je hráč na řadě a co padlo */}
+                <LudoTurn 
+                  playerOnTurn={isMyTurn} 
+                  dice={gameState.diceValue} 
+                  onRoll={handleRoll} 
+                />
               </Card.Body>
             </Card>
             <Card className="flex-grow-1" style={{ minHeight: 400 }}>
-              <Card.Header>Chat</Card.Header>
+              <Card.Header>Chat (Místnost: {roomId})</Card.Header>
               <Card.Body className="p-0"><LudoChat/></Card.Body>
             </Card>
           </div>

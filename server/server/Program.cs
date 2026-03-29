@@ -144,7 +144,7 @@ namespace server
             app.UseAuthorization();
 
             //SignalR endpoint
-            app.MapHub<GameHub>("/gamehub");
+            app.MapHub<GameHub>("api/gamehub");
             // Health check endpoint
             app.MapHealthChecks("/health", new HealthCheckOptions
             {
