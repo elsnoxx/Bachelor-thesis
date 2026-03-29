@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { Container, Row, Col, Spinner } from "react-bootstrap";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
 import PlayerPanel from "./components/PlayerPanel";
 import BalanceArena from "./components/BalancePanet";
@@ -13,13 +13,23 @@ interface EnergyBattlePacket {
 
 export default function BalanceGame() {
     const { roomId } = useParams<{ roomId: string }>();
+    const location = useLocation();
+    const passedRoomName = (location.state as any)?.roomName as string | undefined;
+    const [roomName, setRoomName] = useState<string | null>(passedRoomName ?? null);
     const [connection, setConnection] = useState<HubConnection | null>(null);
     
+
     // Stavy pro oba hráče
     const [leftPlayer, setLeftPlayer] = useState<{ id: string | null, value: number }>({ id: null, value: 500 });
     const [rightPlayer, setRightPlayer] = useState<{ id: string | null, value: number }>({ id: null, value: 500 });
 
     useEffect(() => {
+        // pokud nebyl název předán přes location.state, načteme fallback ze sessionStorage
+        if (!passedRoomName && roomId) {
+            const fallback = sessionStorage.getItem(`roomName_${roomId}`);
+            if (fallback) setRoomName(fallback);
+        }
+
         if (!roomId) return;
 
         const conn = new HubConnectionBuilder()
@@ -72,7 +82,7 @@ export default function BalanceGame() {
             <Row className="mb-4">
                 <Col className="bg-light rounded-lg shadow p-4 text-center">
                     <h3 className="font-semibold">Biofeedback Balance Aréna</h3>
-                    <p className="text-sm text-muted">Místnost: {roomId}</p>
+                    <p className="text-sm text-muted">Místnost: {roomName ?? roomId}</p>
                     <small>Uklidni se, abys přetáhl váhu na svou stranu</small>
                 </Col>
             </Row>

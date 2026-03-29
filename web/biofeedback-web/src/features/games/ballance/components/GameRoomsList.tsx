@@ -72,24 +72,24 @@ export default function GameRoomsList() {
             setShowPasswordModal(true);
             setSelectedRoomName(room.name);
         } else {
-            // Místnost nemá heslo, rovnou se připojíme
-            await executeJoin(room.id, null);
+            // Místnost nemá heslo, rovnou se připojíme a předáme název
+            await executeJoin(room.id, null, room.name);
         }
     };
 
     const getUserEmail = (): string | null => {
         const userJson = localStorage.getItem('user');
         if (userJson) {
-            try { return JSON.parse(userJson).email || null; } catch {}
+            try { return JSON.parse(userJson).email || null; } catch { }
         }
         const token = localStorage.getItem('token');
         if (token) {
-            try { const p = JSON.parse(atob(token.split('.')[1])); return p.email || p.sub || null; } catch {}
+            try { const p = JSON.parse(atob(token.split('.')[1])); return p.email || p.sub || null; } catch { }
         }
         return null;
     };
 
-    const executeJoin = async (roomId: string | null, password: string | null) => {
+    const executeJoin = async (roomId: string | null, password: string | null, roomName?: string) => {
         if (!roomId) { alert('Neznámé ID místnosti'); return; }
         setJoining(true);
         try {
@@ -108,12 +108,13 @@ export default function GameRoomsList() {
             });
 
             if (!res.ok) {
-                const data = await res.json().catch(()=>null);
+                const data = await res.json().catch(() => null);
                 throw new Error(data?.title || data?.message || `Server ${res.status}`);
             }
 
-            // po úspěšném joinu redirect na hru
-            navigate(`/ballance/game/${roomId}`);
+            // uložíme název do sessionStorage (fallback pro reload) a redirect na hru s předaným state
+            if (roomName) sessionStorage.setItem(`roomName_${roomId}`, roomName);
+            navigate(`/ballance/game/${roomId}`, { state: { roomName } });
         } catch (err) {
             alert(err instanceof Error ? err.message : 'Chyba při připojování');
         } finally {
@@ -229,7 +230,7 @@ export default function GameRoomsList() {
                     onSubmit={(password) => {
                         // password přijde z vnitřku modalu
                         if (selectedRoomId) {
-                            executeJoin(selectedRoomId, password);
+                            executeJoin(selectedRoomId, password, selectedRoomName);
                         }
                     }}
                 />

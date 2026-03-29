@@ -74,7 +74,7 @@ export default function GameRoomsList() {
             setSelectedRoomName(room.name);
         } else {
             // Místnost nemá heslo, rovnou se připojíme
-            await executeJoin(room.id, null);
+            await executeJoin(room.id, null, room.name);
         }
     };
 
@@ -90,7 +90,7 @@ export default function GameRoomsList() {
         return null;
     };
 
-    const executeJoin = async (roomId: string | null, password: string | null) => {
+    const executeJoin = async (roomId: string | null, password: string | null, roomName?: string) => {
         if (!roomId) { alert('Neznámé ID místnosti'); return; }
         setJoining(true);
         try {
@@ -114,7 +114,8 @@ export default function GameRoomsList() {
             }
 
             // po úspěšném joinu redirect na hru
-            navigate(`/ludo/game/${roomId}`);
+            if (roomName) sessionStorage.setItem(`roomName_${roomId}`, roomName);
+            navigate(`/ludo/game/${roomId}`, { state: { roomName } });
         } catch (err) {
             alert(err instanceof Error ? err.message : 'Chyba při připojování');
         } finally {
@@ -234,7 +235,7 @@ export default function GameRoomsList() {
                     onSubmit={(password) => {
                         // password přijde z vnitřku modalu
                         if (selectedRoomId) {
-                            executeJoin(selectedRoomId, password);
+                            executeJoin(selectedRoomId, password, selectedRoomName);
                         }
                     }}
                 />

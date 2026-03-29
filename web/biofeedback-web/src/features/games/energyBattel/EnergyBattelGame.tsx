@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Container } from "react-bootstrap";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { HubConnection, HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 
 interface EnergyBattlePacket {
@@ -11,11 +11,19 @@ interface EnergyBattlePacket {
 
 export default function EnergyBattelGame() {
   const { roomId } = useParams<{ roomId: string }>();
+  const location = useLocation();
+    const passedRoomName = (location.state as any)?.roomName as string | undefined;
+    const [roomName, setRoomName] = useState<string | null>(passedRoomName ?? null);
   const [connection, setConnection] = useState<HubConnection | null>(null);
   const [packets, setPackets] = useState<EnergyBattlePacket[]>([]);
 
   useEffect(() => {
     if (!roomId) return;
+
+    if (!passedRoomName && roomId) {
+            const fallback = sessionStorage.getItem(`roomName_${roomId}`);
+            if (fallback) setRoomName(fallback);
+        }
 
     const conn = new HubConnectionBuilder()
       .withUrl(`${import.meta.env.VITE_API_URL}/gamehub`, {
@@ -59,7 +67,7 @@ export default function EnergyBattelGame() {
 
   return (
     <Container fluid className="py-4">
-      <h1>Energy battle — místnost {roomId}</h1>
+      <h1>Energy battle — místnost {roomName ?? roomId}</h1>
       <button onClick={sendTestData} className="btn btn-primary mb-3">
         Poslat náhodná data (Test)
       </button>

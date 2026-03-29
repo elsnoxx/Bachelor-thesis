@@ -47,7 +47,7 @@ export default function GameRoomsList() {
             }
 
             const result: ApiResponse = await response.json();
-            
+
             if (result.error) {
                 throw new Error(result.error);
             }
@@ -61,17 +61,17 @@ export default function GameRoomsList() {
         }
     };
 
-    const handleJoinRoom = (room: GameRoom) => {
+    const handleJoinRoom = async (room: GameRoom) => {
         if (room.password) {
             setSelectedRoomId(room.id);
             setSelectedRoomName(room.name);
             setShowPasswordModal(true);
         } else {
-            executeJoin(room.id, null);
+            await executeJoin(room.id, null, room.name);
         }
     };
 
-    const executeJoin = async (roomId: string | null, password: string | null) => {
+    const executeJoin = async (roomId: string | null, password: string | null, roomName?: string) => {
         if (!roomId) { alert('Neznámé ID místnosti'); return; }
         setJoining(true);
         try {
@@ -90,12 +90,13 @@ export default function GameRoomsList() {
             });
 
             if (!res.ok) {
-                const data = await res.json().catch(()=>null);
+                const data = await res.json().catch(() => null);
                 throw new Error(data?.title || data?.message || `Server ${res.status}`);
             }
 
             // po úspěšném joinu redirect na hru
-            navigate(`/energybattle/game/${roomId}`);
+            if (roomName) sessionStorage.setItem(`roomName_${roomId}`, roomName);
+            navigate(`/energybattle/game/${roomId}`, { state: { roomName } });
         } catch (err) {
             alert(err instanceof Error ? err.message : 'Chyba při připojování');
         } finally {
@@ -110,11 +111,11 @@ export default function GameRoomsList() {
     const getUserEmail = (): string | null => {
         const userJson = localStorage.getItem('user');
         if (userJson) {
-            try { return JSON.parse(userJson).email || null; } catch {}
+            try { return JSON.parse(userJson).email || null; } catch { }
         }
         const token = localStorage.getItem('token');
         if (token) {
-            try { const p = JSON.parse(atob(token.split('.')[1])); return p.email || p.sub || null; } catch {}
+            try { const p = JSON.parse(atob(token.split('.')[1])); return p.email || p.sub || null; } catch { }
         }
         return null;
     };
@@ -162,7 +163,7 @@ export default function GameRoomsList() {
                     Obnovit
                 </Button>
             </div>
-            
+
             <Table striped bordered hover responsive>
                 <thead className="table-dark">
                     <tr>
@@ -214,13 +215,20 @@ export default function GameRoomsList() {
                 </tbody>
             </Table>
 
-            <PasswordModal
-                show={showPasswordModal}
-                onHide={() => { setShowPasswordModal(false); setSelectedRoomId(null); setSelectedRoomName(undefined); }}
-                roomName={selectedRoomName}
-                submitting={joining}
-                onSubmit={(pwd) => { if (selectedRoomId) executeJoin(selectedRoomId, pwd); }}
-            />
+            {showPasswordModal && (
+                < PasswordModal
+                    show={showPasswordModal}
+                    onHide={() => setShowPasswordModal(false)}
+                    roomName={selectedRoomName}
+                    submitting={joining} // Předáme stav načítání
+                    onSubmit={(password) => {
+                        // password přijde z vnitřku modalu
+                        if (selectedRoomId) {
+                            executeJoin(selectedRoomId, password, selectedRoomName);
+                        }
+                    }}
+                />
+            )}
         </div>
     );
 }

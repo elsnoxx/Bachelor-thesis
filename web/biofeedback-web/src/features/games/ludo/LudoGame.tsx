@@ -17,14 +17,23 @@ interface LudoGameState {
 
 export default function LudoGame() {
   const { roomId } = useParams<{ roomId: string }>();
+  const location = useLocation();
+  const passedRoomName = (location.state as any)?.roomName as string | undefined;
+  const [roomName, setRoomName] = useState<string | null>(passedRoomName ?? null);
   const [connection, setConnection] = useState<HubConnection | null>(null);
-  
+
   // Všechna herní data teď pocházejí z jednoho objektu stavu
   const [gameState, setGameState] = useState<LudoGameState | null>(null);
   const [myPlayerId, setMyPlayerId] = useState<string>("");
 
   useEffect(() => {
+
     if (!roomId) return;
+
+    if (!passedRoomName && roomId) {
+      const fallback = sessionStorage.getItem(`roomName_${roomId}`);
+      if (fallback) setRoomName(fallback);
+    }
 
     const conn = new HubConnectionBuilder()
       .withUrl(`${import.meta.env.VITE_API_URL}/gamehub`, {
@@ -42,7 +51,7 @@ export default function LudoGame() {
       .then(() => {
         conn.invoke("JoinRoom", roomId);
         // Získáme své ID z tokenu/systému (zjednodušeno)
-        setMyPlayerId("r"); 
+        setMyPlayerId("r");
       })
       .catch(console.error);
 
@@ -53,7 +62,7 @@ export default function LudoGame() {
   // LOGIKA: Místo počítání posunu jen pošleme serveru ID figurky
   const handlePieceClick = (pieceId: string) => {
     if (!connection || !gameState || gameState.currentPlayerId !== myPlayerId) return;
-    
+
     // Server zkontroluje, jestli je tah validní, provede ho a všem pošle UpdateLudoState
     connection.invoke("LudoMovePiece", roomId, pieceId).catch(console.error);
   };
@@ -70,36 +79,37 @@ export default function LudoGame() {
 
   return (
     <Container fluid className="py-4">
+      <p className="text-sm text-muted">Místnost: {roomName ?? roomId}</p>
       <Row className="justify-content-center g-4">
         <Col xs={12} lg="auto" className="d-flex justify-content-center">
           <Card className="shadow-lg border-0">
             <Card.Body className="p-2 p-sm-4">
               <div style={{ width: "100%", maxWidth: "min(90vw,650px)", aspectRatio: "1/1" }}>
                 {/* Board jen tupě zobrazuje data z gameState */}
-                <LudoBoard 
-                    pieces={gameState.pieces} 
-                    onPieceClick={handlePieceClick} 
+                <LudoBoard
+                  pieces={gameState.pieces}
+                  onPieceClick={handlePieceClick}
                 />
               </div>
             </Card.Body>
           </Card>
         </Col>
-        
+
         <Col xs={12} lg={4} xl={3}>
           <div className="d-flex flex-column gap-3">
             <Card>
               <Card.Body>
                 {/* LudoTurn dostává info, zda je hráč na řadě a co padlo */}
-                <LudoTurn 
-                  playerOnTurn={isMyTurn} 
-                  dice={gameState.diceValue} 
-                  onRoll={handleRoll} 
+                <LudoTurn
+                  playerOnTurn={isMyTurn}
+                  dice={gameState.diceValue}
+                  onRoll={handleRoll}
                 />
               </Card.Body>
             </Card>
             <Card className="flex-grow-1" style={{ minHeight: 400 }}>
               <Card.Header>Chat (Místnost: {roomId})</Card.Header>
-              <Card.Body className="p-0"><LudoChat/></Card.Body>
+              <Card.Body className="p-0"><LudoChat /></Card.Body>
             </Card>
           </div>
         </Col>
