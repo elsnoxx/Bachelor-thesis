@@ -9,6 +9,7 @@ interface GameRoom {
     gameType: string;
     password: string | null;
     maxPlayers: number;
+    currentPlayers: number;
 }
 
 interface ApiResponse {
@@ -47,12 +48,16 @@ export default function GameRoomsList() {
             }
 
             const result: ApiResponse = await response.json();
-
-            if (result.error) {
-                throw new Error(result.error);
-            }
-
-            setGameRooms(result.data || []);
+            if (result.error) throw new Error(result.error);
+            const rooms = (result.data || []).map(r => ({
+                id: r.id,
+                name: r.name,
+                gameType: r.gameType,
+                password: r.password ?? null,
+                maxPlayers: r.maxPlayers ?? r.MaxPlayers ?? 0,
+                currentPlayers: r.currentPlayers ?? r.CurrentPlayers ?? 0
+            }));
+            setGameRooms(rooms);
         } catch (err) {
             console.error('Chyba při načítání herních místností:', err);
             setError(err instanceof Error ? err.message : 'Nastala neočekávaná chyba');
@@ -188,9 +193,11 @@ export default function GameRoomsList() {
                                 </Badge>
                             </td>
                             <td>
-                                <span className="text-muted">
-                                    0/{room.maxPlayers}
-                                </span>
+                                {room.currentPlayers >= room.maxPlayers ? (
+                                    <Badge bg="danger">Plné ({room.currentPlayers}/{room.maxPlayers})</Badge>
+                                ) : (
+                                    <span className="text-muted">{room.currentPlayers ?? 0}/{room.maxPlayers}</span>
+                                )}
                             </td>
                             <td>
                                 {room.password ? (
@@ -208,6 +215,7 @@ export default function GameRoomsList() {
                                     variant="success"
                                     size="sm"
                                     onClick={() => handleJoinRoom(room)}
+                                    disabled={room.currentPlayers >= room.maxPlayers || joining}
                                 >
                                     Připojit se
                                 </Button>

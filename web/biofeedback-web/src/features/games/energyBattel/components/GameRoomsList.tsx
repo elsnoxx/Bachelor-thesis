@@ -9,6 +9,7 @@ interface GameRoom {
     gameType: string;
     password: string | null;
     maxPlayers: number;
+    currentPlayers: number; // <- přidat
 }
 
 interface ApiResponse {
@@ -185,7 +186,7 @@ export default function GameRoomsList() {
                             </td>
                             <td>
                                 <span className="text-muted">
-                                    0/{room.maxPlayers}
+                                    {room.currentPlayers}/{room.maxPlayers}
                                 </span>
                             </td>
                             <td>
