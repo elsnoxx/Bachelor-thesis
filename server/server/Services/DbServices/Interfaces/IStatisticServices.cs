@@ -1,10 +1,13 @@
-﻿using server.Models.DB;
+﻿using Microsoft.AspNetCore.Mvc;
+using server.Models.DB;
+using server.Models.DTO;
 
 namespace server.Services.DbServices.Interfaces
 {
     public interface IStatisticServices
     {
-        Task<IEnumerable<Statistic>> GetUserStatsAsync(string userId);
-        Task<IEnumerable<BioFeedback>> GetUserBiofeedbackAsync(string userId);
+        Task<IEnumerable<Statistic>> GetUserStatsAsync(string userEmail);
+        Task<IEnumerable<BioFeedback>> GetUserBiofeedbackAsync(string userEmail);
+        Task<DetailBioFeedbackData> GetBioSummaryAsync(string userEmail, string sesionId);
     }
 }

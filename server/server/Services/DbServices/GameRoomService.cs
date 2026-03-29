@@ -36,6 +36,9 @@ namespace server.Services.DbServices
                 {
                     gameRoomsDTO.ElementAt(i).password = "***";
                 }
+
+                var usersInRoom = await _sesionRepository.GetUsersInGameRoomAsync(gameRooms.ElementAt(i).Id);
+                gameRoomsDTO.ElementAt(i).CurrentPlayers = usersInRoom.Count();
             }
 
             return Result<IEnumerable<GameRoomDTO>>.Ok(gameRoomsDTO);

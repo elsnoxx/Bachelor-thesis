@@ -9,5 +9,6 @@ namespace server.Models.DTO
         public string GameType { get; set; }
         public string password { get; set; }
         public int MaxPlayers { get; set; }
+        public int CurrentPlayers { get; set; }
     }
 }
