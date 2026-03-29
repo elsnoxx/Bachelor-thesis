@@ -2,8 +2,8 @@ import { Card, Container, Row, Col } from "react-bootstrap";
 
 const games = [
     { name: 'Člověče nezlob se', href: '/games/ludo', description: 'Klasická desková hra pro celou rodinu.', image: "/img/ludo.jpg" },
-    { name: 'Balancuj', href: '/games/balance', description: 'Zábavná hra na udržení rovnováhy.', image: "/img/balance.webp" },
-    { name: 'Bitva', href: '/games/energybattle', description: 'Strategická hra pro dva hráče.', image: "/img/battle.jpg" }
+    { name: 'Balancuj', href: '/games/balance', description: 'Zábavná hra na udržení rovnováhy.', image: "/img/ballance.webp" },
+    { name: 'Bitva', href: '/games/energybattle', description: 'Strategická hra pro dva hráče.', image: "/img/energybattle.jfif" }
 ];
     
 export default function HryPage() {   
