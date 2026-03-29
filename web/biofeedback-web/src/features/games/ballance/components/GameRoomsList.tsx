@@ -48,7 +48,7 @@ export default function GameRoomsList() {
             }
 
             const result: ApiResponse = await response.json();
-            const rooms = (result.data || []).map(r => ({
+            const rooms = (result.data || []).map((r: any) => ({
                 id: r.id,
                 name: r.name,
                 gameType: r.gameType,
