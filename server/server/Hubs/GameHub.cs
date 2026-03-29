@@ -64,6 +64,7 @@ namespace server.Hubs
 
             if (gameState != null)
             {
+                Log.Information($"Game state updated for room {roomId} by player {userId}: {gameState}");
                 // 2. Rozešleme aktualizovaný, vypočítaný stav celé místnosti
                 // Klient dostane: ballPosition, leftValue (průměr), rightValue (průměr), atd.
                 await Clients.Group(roomId).SendAsync("ReceiveGameState", gameState);
