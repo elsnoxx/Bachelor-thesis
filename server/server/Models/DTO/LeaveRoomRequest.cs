@@ -2,6 +2,6 @@
 {
     public class LeaveRoomRequest
     {
-        public Guid userId { get; set; }
+        public string userEmail{ get; set; }
     }
 }

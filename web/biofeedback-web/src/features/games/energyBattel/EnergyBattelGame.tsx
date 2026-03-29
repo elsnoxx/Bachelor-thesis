@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Container } from "react-bootstrap";
 import { useParams, useLocation } from "react-router-dom";
 import { HubConnection, HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
+import GameHeader from "../general/GameHeader";
 
 interface EnergyBattlePacket {
   playerId: string;
@@ -12,8 +13,8 @@ interface EnergyBattlePacket {
 export default function EnergyBattelGame() {
   const { roomId } = useParams<{ roomId: string }>();
   const location = useLocation();
-    const passedRoomName = (location.state as any)?.roomName as string | undefined;
-    const [roomName, setRoomName] = useState<string | null>(passedRoomName ?? null);
+  const passedRoomName = (location.state as any)?.roomName as string | undefined;
+  const [roomName, setRoomName] = useState<string | null>(passedRoomName ?? null);
   const [connection, setConnection] = useState<HubConnection | null>(null);
   const [packets, setPackets] = useState<EnergyBattlePacket[]>([]);
 
@@ -65,8 +66,21 @@ export default function EnergyBattelGame() {
     }
   };
 
+  const getUserEmail = (): string | null => {
+        const userJson = localStorage.getItem('user');
+        if (userJson) {
+            try { return JSON.parse(userJson).email || null; } catch { }
+        }
+        const token = localStorage.getItem('token');
+        if (token) {
+            try { const p = JSON.parse(atob(token.split('.')[1])); return p.email || p.sub || null; } catch { }
+        }
+        return null;
+    };
+
   return (
     <Container fluid className="py-4">
+      <GameHeader gameName="energybattle" userEmail={getUserEmail()} />
       <h1>Energy battle — místnost {roomName ?? roomId}</h1>
       <button onClick={sendTestData} className="btn btn-primary mb-3">
         Poslat náhodná data (Test)

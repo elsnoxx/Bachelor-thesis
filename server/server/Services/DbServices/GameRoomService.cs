@@ -135,7 +135,7 @@ namespace server.Services.DbServices
         {
             try
             {
-                var user = await _userRepository.GetByIdAsync(request.userId);
+                var user = await _userRepository.GetByEmailAsync(request.userEmail);
                 var gameRoom = await _gameRoomRepository.GameRoomById(gameRoomId);
                 if (user == null || gameRoom == null)
                 {
@@ -143,15 +143,15 @@ namespace server.Services.DbServices
                     return Result<bool>.Fail("User or Game Room not found.");
                 }
                 var usersInRoom = await _sesionRepository.GetUsersInGameRoomAsync(gameRoomId);
-                if (usersInRoom.Contains(request.userId) == false)
+                if (usersInRoom.Contains(user.Id) == false)
                 {
                     Log.Error("User not in the Game Room.");
                     return Result<bool>.Fail("User not in the Game Room.");
                 }
-                var removed = await _sesionRepository.RemoveUserFromSesion(request.userId, gameRoomId);
+                var removed = await _sesionRepository.RemoveUserFromSesion(user.Id, gameRoomId);
                 if (removed)
                 {
-                    Log.Debug("User {UserId} left game room {RoomId}", request.userId, gameRoomId);
+                    Log.Debug("User {UserId} left game room {RoomId}", user.Id, gameRoomId);
                     return Result<bool>.Ok(true);
                 }
                 Log.Error("Failed to remove user from session");

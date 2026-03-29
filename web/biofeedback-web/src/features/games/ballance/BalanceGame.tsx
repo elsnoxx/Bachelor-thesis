@@ -4,6 +4,7 @@ import { useParams, useLocation } from "react-router-dom";
 import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
 import PlayerPanel from "./components/PlayerPanel";
 import BalanceArena from "./components/BalancePanet";
+import GameHeader from "../general/GameHeader";
 
 interface EnergyBattlePacket {
     playerId: string;
@@ -75,10 +76,23 @@ export default function BalanceGame() {
     //     return () => clearInterval(interval);
     // }, [connection, roomId]);
 
+    const getUserEmail = (): string | null => {
+        const userJson = localStorage.getItem('user');
+        if (userJson) {
+            try { return JSON.parse(userJson).email || null; } catch { }
+        }
+        const token = localStorage.getItem('token');
+        if (token) {
+            try { const p = JSON.parse(atob(token.split('.')[1])); return p.email || p.sub || null; } catch { }
+        }
+        return null;
+    };
+
     if (!connection) return <div className="text-center p-5"><Spinner /> Připojování k aréně...</div>;
 
     return (
         <Container fluid className="h-screen py-4">
+            <GameHeader gameName="energybattle" userEmail={getUserEmail()} />
             <Row className="mb-4">
                 <Col className="bg-light rounded-lg shadow p-4 text-center">
                     <h3 className="font-semibold">Biofeedback Balance Aréna</h3>

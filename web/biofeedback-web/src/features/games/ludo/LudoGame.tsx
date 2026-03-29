@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
 import { Container, Row, Col, Card, Spinner } from "react-bootstrap";
 import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
 import LudoBoard from "./components/LudoBoard";
 import LudoTurn from "./components/LudoTurn";
 import LudoChat from "./components/LudoChat";
 import type { Piece } from "./logic/LudoEngine";
+import { useParams, useLocation } from "react-router-dom";
+import GameHeader from "../general/GameHeader";
+
 
 // DTO, které nám posílá server (Source of Truth)
 interface LudoGameState {
@@ -77,8 +79,21 @@ export default function LudoGame() {
 
   const isMyTurn = gameState.currentPlayerId === myPlayerId;
 
+  const getUserEmail = (): string | null => {
+        const userJson = localStorage.getItem('user');
+        if (userJson) {
+            try { return JSON.parse(userJson).email || null; } catch { }
+        }
+        const token = localStorage.getItem('token');
+        if (token) {
+            try { const p = JSON.parse(atob(token.split('.')[1])); return p.email || p.sub || null; } catch { }
+        }
+        return null;
+    };
+
   return (
     <Container fluid className="py-4">
+      <GameHeader gameName="energybattle" userEmail={getUserEmail()} />
       <p className="text-sm text-muted">Místnost: {roomName ?? roomId}</p>
       <Row className="justify-content-center g-4">
         <Col xs={12} lg="auto" className="d-flex justify-content-center">
