@@ -17,10 +17,17 @@ namespace server.Repositories
         public async Task<IEnumerable<BioFeedback>> GetStatistic(Guid userId)
         {
             return await _context.BioFeedbacks
-                .Include(b => b.Session)
-                .Where(b => b.Session.UserId == userId)
+                .Include(b => b.User)
+                .Where(b => b.User.Id == userId)
                 .OrderByDescending(b => b.Timestamp)
                 .ToListAsync();
+        }
+
+        public async Task<IEnumerable<BioFeedback>> GetBySessionAsync(Guid userId, Guid sessionId)
+        {
+            return await _context.BioFeedbacks
+                .Where(b => b.UserId == userId && b.GameRoomId == sessionId)
+                .ToListAsync(); // Tady se filtrace provede už v SQL databázi
         }
     }
 }

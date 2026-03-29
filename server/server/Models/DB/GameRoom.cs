@@ -21,5 +21,6 @@ namespace server.Models.DB
         public User Creator { get; set; } = null!;
 
         public ICollection<Session> Sessions { get; set; } = new List<Session>();
+        public ICollection<BioFeedback> BioFeedbacks { get; set; } = new List<BioFeedback>();
     }
 }

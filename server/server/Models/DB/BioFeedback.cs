@@ -1,14 +1,21 @@
-﻿namespace server.Models.DB
+﻿using server.Models.DB;
+using System.Text.Json.Serialization;
+
+public class BioFeedback
 {
-    public class BioFeedback
-    {
-        public int Id { get; set; }
+    public int Id { get; set; }
 
-        public Guid SessionId { get; set; }
-        [System.Text.Json.Serialization.JsonIgnore]
-        public Session Session { get; set; } = null!;
+    // Cizí klíče (vždy velká písmena pro konzistenci)
+    public Guid GameRoomId { get; set; }
+    public Guid UserId { get; set; }
 
-        public float GsrValue { get; set; }
-        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
-    }
+    // Navigační vlastnosti (přejmenujte na velká písmena)
+    [JsonIgnore]
+    public User User { get; set; } = null!;
+
+    [JsonIgnore]
+    public GameRoom GameRoom { get; set; } = null!;
+
+    public float GsrValue { get; set; }
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }

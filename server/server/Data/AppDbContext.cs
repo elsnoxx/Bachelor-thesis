@@ -46,11 +46,19 @@ namespace server.Data
                 .WithMany(g => g.Sessions)
                 .HasForeignKey(s => s.GameRoomId);
 
-            // Relace: Session → BioFeedback
+            // Relace: GameRoom → BioFeedback
             modelBuilder.Entity<BioFeedback>()
-                .HasOne(b => b.Session)
-                .WithMany(s => s.BioFeedbacks)
-                .HasForeignKey(b => b.SessionId);
+                .HasOne(b => b.GameRoom)
+                .WithMany(g => g.BioFeedbacks)
+                .HasForeignKey(b => b.GameRoomId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Relace: User → BioFeedback
+            modelBuilder.Entity<BioFeedback>()
+                .HasOne(b => b.User)
+                .WithMany(u => u.BioFeedbacks)
+                .HasForeignKey(b => b.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Relace: User → Statistic
             modelBuilder.Entity<Statistic>()
@@ -64,14 +72,15 @@ namespace server.Data
                 .WithMany(u => u.RefreshTokens)
                 .HasForeignKey(r => r.UserId);
 
+
             // indexes
             modelBuilder.Entity<Session>()
                 .HasIndex(s => new { s.UserId, s.IsActive })
                 .HasDatabaseName("idx_session_user_active");
 
             modelBuilder.Entity<BioFeedback>()
-                .HasIndex(b => new { b.SessionId, b.Timestamp })
-                .HasDatabaseName("idx_biofeedback_session_time");
+                .HasIndex(b => new { b.GameRoomId, b.UserId, b.Timestamp })
+                .HasDatabaseName("idx_biofeedback_room_user_time");
 
             modelBuilder.Entity<GameRoom>()
                 .HasIndex(g => new { g.Status, g.GameType })

@@ -29,5 +29,12 @@ namespace server.Controllers
             var data = await _statisticServices.GetUserBiofeedbackAsync(userEmail);
             return Ok(data);
         }
+
+        [HttpGet("biofeedback/{userEmail}/summary/{sesionId}")]
+        public async Task<IActionResult> GetBioSummary(string userEmail, string sesionId)
+        {
+            var summary = await _statisticServices.GetBioSummaryAsync(userEmail, sesionId);
+            return Ok(summary);
+        }
     }
 }

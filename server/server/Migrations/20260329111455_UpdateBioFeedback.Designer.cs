@@ -12,20 +12,20 @@ using server.Data;
 namespace server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251008035357_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260329111455_UpdateBioFeedback")]
+    partial class UpdateBioFeedback
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.9")
+                .HasAnnotation("ProductVersion", "10.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("server.Models.DB.BioFeedback", b =>
+            modelBuilder.Entity("BioFeedback", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -33,18 +33,29 @@ namespace server.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<Guid>("GameRoomId")
+                        .HasColumnType("uuid");
+
                     b.Property<float>("GsrValue")
                         .HasColumnType("real");
 
-                    b.Property<Guid>("SessionId")
+                    b.Property<Guid?>("SessionId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("SessionId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("GameRoomId", "UserId", "Timestamp")
+                        .HasDatabaseName("idx_biofeedback_room_user_time");
 
                     b.ToTable("BioFeedbacks");
                 });
@@ -70,10 +81,12 @@ namespace server.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("PasswordHash")
-                        .HasColumnType("text");
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -83,7 +96,48 @@ namespace server.Migrations
 
                     b.HasIndex("CreatedBy");
 
+                    b.HasIndex("Status", "GameType")
+                        .HasDatabaseName("idx_gameroom_status_type");
+
                     b.ToTable("GameRooms");
+                });
+
+            modelBuilder.Entity("server.Models.DB.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByIp")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("Expires")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReplacedByToken")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("Revoked")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RevokedByIp")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("server.Models.DB.Session", b =>
@@ -101,6 +155,9 @@ namespace server.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("StartTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -111,7 +168,8 @@ namespace server.Migrations
 
                     b.HasIndex("GameRoomId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "IsActive")
+                        .HasDatabaseName("idx_session_user_active");
 
                     b.ToTable("Sessions");
                 });
@@ -142,7 +200,8 @@ namespace server.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "GameType")
+                        .HasDatabaseName("idx_statistic_user_game");
 
                     b.ToTable("Statistics");
                 });
@@ -153,18 +212,24 @@ namespace server.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AvatarUrl")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Email")
-                        .HasColumnType("text");
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
 
                     b.Property<DateTime?>("LastLogin")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
 
                     b.Property<string>("Role")
                         .IsRequired()
@@ -172,22 +237,35 @@ namespace server.Migrations
 
                     b.Property<string>("Username")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("server.Models.DB.BioFeedback", b =>
+            modelBuilder.Entity("BioFeedback", b =>
                 {
-                    b.HasOne("server.Models.DB.Session", "Session")
+                    b.HasOne("server.Models.DB.GameRoom", "GameRoom")
                         .WithMany("BioFeedbacks")
-                        .HasForeignKey("SessionId")
+                        .HasForeignKey("GameRoomId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Session");
+                    b.HasOne("server.Models.DB.Session", null)
+                        .WithMany("BioFeedbacks")
+                        .HasForeignKey("SessionId");
+
+                    b.HasOne("server.Models.DB.User", "User")
+                        .WithMany("BioFeedbacks")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("GameRoom");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("server.Models.DB.GameRoom", b =>
@@ -199,6 +277,17 @@ namespace server.Migrations
                         .IsRequired();
 
                     b.Navigation("Creator");
+                });
+
+            modelBuilder.Entity("server.Models.DB.RefreshToken", b =>
+                {
+                    b.HasOne("server.Models.DB.User", "User")
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("server.Models.DB.Session", b =>
@@ -233,6 +322,8 @@ namespace server.Migrations
 
             modelBuilder.Entity("server.Models.DB.GameRoom", b =>
                 {
+                    b.Navigation("BioFeedbacks");
+
                     b.Navigation("Sessions");
                 });
 
@@ -243,7 +334,11 @@ namespace server.Migrations
 
             modelBuilder.Entity("server.Models.DB.User", b =>
                 {
+                    b.Navigation("BioFeedbacks");
+
                     b.Navigation("CreatedRooms");
+
+                    b.Navigation("RefreshTokens");
 
                     b.Navigation("Sessions");
 

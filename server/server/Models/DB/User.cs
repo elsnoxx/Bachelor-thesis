@@ -26,5 +26,6 @@ namespace server.Models.DB
         public ICollection<GameRoom> CreatedRooms { get; set; } = new List<GameRoom>();
         public ICollection<Session> Sessions { get; set; } = new List<Session>();
         public ICollection<Statistic> Statistics { get; set; } = new List<Statistic>();
+        public ICollection<BioFeedback> BioFeedbacks { get; set; } = new List<BioFeedback>();
     }
 }
