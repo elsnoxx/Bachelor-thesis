@@ -1,6 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { AuthContext } from "../commpoment/AuthContext";
 import { Table, Spinner } from "react-bootstrap";
+import { Link } from "react-router-dom";
 
 interface StatItem {
   id: string;
@@ -12,10 +13,10 @@ interface StatItem {
   lastPlayed: string;
 }
 
+
 export default function StatistikyPage() {
   const { user } = useContext(AuthContext);
   const [stats, setStats] = useState<StatItem[] | null>(null);
-  const [bio, setBio] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,19 +48,11 @@ export default function StatistikyPage() {
     setLoading(true);
     setError(null);
 
-    Promise.all([
-      fetch(`${base}/stats/user/${userId}`, { headers }),
-      fetch(`${base}/stats/biofeedback/${userId}`, { headers }),
-    ])
-      .then(async ([r1, r2]) => {
-        if (!r1.ok || !r2.ok) {
-          const msg = `Server error: ${r1.status} / ${r2.status}`;
-          throw new Error(msg);
-        }
-        const s = await r1.json();
-        const b = await r2.json();
+    fetch(`${base}/stats/user/${userId}`, { headers })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`${r.status}`);
+        const s = await r.json();
         setStats(Array.isArray(s) ? s : [s]);
-        setBio(Array.isArray(b) ? b : [b]);
       })
       .catch((err) => setError(err.message || "Chyba při načítání"))
       .finally(() => setLoading(false));
@@ -74,12 +67,19 @@ export default function StatistikyPage() {
     );
   if (error) return <div style={{ color: "red" }}>{error}</div>;
 
+  const chartData = (stats ?? [])
+    .slice() // clone
+    .sort((a, b) => new Date(a.timestamp ?? a.date).getTime() - new Date(b.timestamp ?? b.date).getTime())
+    .map((b) => ({
+      time: new Date(b.timestamp ?? b.date).toLocaleTimeString(), // zobrazit čas na ose X
+      gsr: (b.gsrValue ?? b.gsr_value ?? b.value) as number,
+    }));
+
   return (
     <div>
       <h2>Statistiky hráče</h2>
 
       <section>
-        <h3>Herní statistiky</h3>
         {stats && stats.length > 0 ? (
           <Table striped bordered hover responsive>
             <thead>
@@ -89,6 +89,7 @@ export default function StatistikyPage() {
                 <th>Nejlepší skóre</th>
                 <th>Počet session</th>
                 <th>Poslední hraní</th>
+                <th>Detail</th>
               </tr>
             </thead>
             <tbody>
@@ -99,40 +100,17 @@ export default function StatistikyPage() {
                   <td>{s.bestScore ?? "—"}</td>
                   <td>{s.totalSessions ?? "—"}</td>
                   <td>{s.lastPlayed ? new Date(s.lastPlayed).toLocaleString() : "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        ) : (
-          <div>Žádné herní statistiky.</div>
-        )}
-      </section>
-
-      <section>
-        <h3>Biofeedback</h3>
-        {bio && bio.length > 0 ? (
-          <Table striped bordered hover responsive>
-            <thead>
-              <tr>
-                <th>Timestamp</th>
-                <th>GSR</th>
-                <th>Data</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bio.map((bf, i) => (
-                <tr key={i}>
-                  <td>{bf.timestamp ? new Date(bf.timestamp).toLocaleString() : bf.date ?? "—"}</td>
-                  <td>{bf.gsr_value ?? bf.value ?? "—"}</td>
-                  <td style={{ maxWidth: 400 }}>
-                    <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>{JSON.stringify(bf, null, 2)}</pre>
+                  <td>
+                    <Link to={`/stats/detail/${encodeURIComponent(s.id)}`} className="btn btn-sm btn-primary">
+                      Detail
+                    </Link>
                   </td>
                 </tr>
               ))}
             </tbody>
           </Table>
         ) : (
-          <div>Žádná biofeedback data.</div>
+          <div>Žádné herní statistiky.</div>
         )}
       </section>
     </div>

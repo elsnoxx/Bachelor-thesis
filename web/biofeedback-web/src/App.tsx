@@ -7,32 +7,19 @@ import AppsFooter from './commpoment/AppsFooter';
 // import { startConnection } from './services/GameConnection';
 import './App.css';
 import RequireAuth from './commpoment/RequireAuth';
+import StatistikDetailPage from "./pages/StatistikDetailPage";
 
 // Stránky (můžeš si je zatím vytvořit jako jednoduché komponenty)
 import HryPage from './pages/GamePage';
-import StatistikyPage from './pages/StatistickPage';
+import StatistikyPage from './pages/StatistikPage';
 import LudoGame from './features/games/ludo/LudoGame';
-import CreateGamePage from './features/games/ludo/components/CreateGameModal';
 import BalanceGame from './features/games/ballance/BalanceGame';
 import BalanceGameList from './features/games/ballance/BalanceGameList';
 import EnergyBattelGameList from './features/games/energyBattel/EnergyBattelGameList';
 import EnergyBattelGame from './features/games/energyBattel/EnergyBattelGame';
 import MainPage from './pages/MainPage';
 
-interface BioData {
-  playerId: string;
-  value: number;
-}
-
 function App() {
-  // const [data, setData] = useState<BioData[]>([]);
-
-  // useEffect(() => {
-  //   startConnection("Player1", (playerId: string, value: number) => {
-  //     setData(prev => [...prev, { playerId, value }]);
-  //   });
-  // }, []);
-
   return (
     <BrowserRouter>
       <AppsNavbar />
@@ -47,6 +34,8 @@ function App() {
             <Route path="/games/ludo" element={<LudoGameList />} />
             <Route path="/hry" element={<HryPage />} />
             <Route path="/statistiky" element={<StatistikyPage />} />
+            <Route path="/stats/detail/:gameType" element={<StatistikDetailPage />} />
+            <Route path="/stats/detail/:sessionId" element={<StatistikDetailPage />} />
             <Route path="/ballance/game/:roomId" element={<BalanceGame />} />
             <Route path="/ludo/game/:roomId" element={<LudoGame />} />
             <Route path="/energybattle/game/:roomId" element={<EnergyBattelGame />} />
