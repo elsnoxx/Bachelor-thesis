@@ -50,5 +50,44 @@ namespace server.Hubs
             _gameManager.RemovePlayer(Context.ConnectionId);
             await base.OnDisconnectedAsync(exception);
         }
+
+        /// <summary>
+        /// Jednotná metoda pro zpracování herních dat (GSR senzor, pohyby, atd.)
+        /// </summary>
+        public async Task SendGameData(string roomId, string gameType, double value)
+        {
+            // Získáme ID (buď z JWT tokenu/Emailu, nebo connectionId jako fallback)
+            var userId = Context.User?.Identity?.Name ?? Context.ConnectionId;
+
+            // 1. Necháme GameManager a příslušnou Service přepočítat stav (včetně těch 30 hodnot)
+            var gameState = _gameManager.HandleMove(gameType, roomId, userId, value);
+
+            if (gameState != null)
+            {
+                // 2. Rozešleme aktualizovaný, vypočítaný stav celé místnosti
+                // Klient dostane: ballPosition, leftValue (průměr), rightValue (průměr), atd.
+                await Clients.Group(roomId).SendAsync("ReceiveGameState", gameState);
+            }
+        }
+
+        //public async Task LudoRollDice(string roomId)
+        //{
+        //    var game = _gameManager.GetLudoGame(roomId);
+        //    var value = game.RollDice(); // Logika v C#
+
+        //    // Pošleme aktualizovaný stav všem v místnosti
+        //    await Clients.Group(roomId).SendAsync("UpdateLudoState", game.GetState());
+        //}
+
+        //public async Task LudoMovePiece(string roomId, string pieceId)
+        //{
+        //    var game = _gameManager.GetLudoGame(roomId);
+        //    bool success = game.TryMove(pieceId); // Ověření a posun v C#
+
+        //    if (success)
+        //    {
+        //        await Clients.Group(roomId).SendAsync("UpdateLudoState", game.GetState());
+        //    }
+        //}
     }
 }

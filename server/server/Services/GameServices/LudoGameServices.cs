@@ -7,11 +7,11 @@ namespace server.Services.GameServices
     {
         private readonly Dictionary<string, double> _scores = new();
 
-        public LudoGameServices() { }
 
-        public void ProcessInput(string playerId, double value)
+        public object ProcessInput(string roomId, string playerId, double value)
         {
             _scores[playerId] = value;
+            return new {value};
         }
 
         public Dictionary<string, double> GetScores()

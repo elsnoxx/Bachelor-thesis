@@ -6,10 +6,14 @@ import PlayerPanel from "./components/PlayerPanel";
 import BalanceArena from "./components/BalancePanet";
 import GameHeader from "../general/GameHeader";
 
-interface EnergyBattlePacket {
-    playerId: string;
-    value: number;
-    timestamp: string;
+// Definujeme rozhraní pro stav, který nám teď posílá C# server
+interface BallanceGameState {
+    ballPosition: number;
+    leftValue: number;
+    rightValue: number;
+    leftPlayerId: string | null;
+    rightPlayerId: string | null;
+    isGameOver: boolean;
 }
 
 export default function BalanceGame() {
@@ -18,14 +22,13 @@ export default function BalanceGame() {
     const passedRoomName = (location.state as any)?.roomName as string | undefined;
     const [roomName, setRoomName] = useState<string | null>(passedRoomName ?? null);
     const [connection, setConnection] = useState<HubConnection | null>(null);
-    
 
-    // Stavy pro oba hráče
+    // Stavy pro hráče a kuličku (nyní synchronizované se serverem)
     const [leftPlayer, setLeftPlayer] = useState<{ id: string | null, value: number }>({ id: null, value: 500 });
     const [rightPlayer, setRightPlayer] = useState<{ id: string | null, value: number }>({ id: null, value: 500 });
+    const [ballPos, setBallPos] = useState<number>(50); // 50 je střed
 
     useEffect(() => {
-        // pokud nebyl název předán přes location.state, načteme fallback ze sessionStorage
         if (!passedRoomName && roomId) {
             const fallback = sessionStorage.getItem(`roomName_${roomId}`);
             if (fallback) setRoomName(fallback);
@@ -40,21 +43,15 @@ export default function BalanceGame() {
             .withAutomaticReconnect()
             .build();
 
-        conn.on("ReceiveEnergyData", (packet: EnergyBattlePacket) => {
-            setLeftPlayer(prev => {
-                // Pokud je to první hráč, co poslal data, nebo už existující "levý" hráč
-                if (prev.id === null || prev.id === packet.playerId) {
-                    return { id: packet.playerId, value: packet.value };
-                }
-                // Pokud to není levý hráč, zkusíme pravého
-                setRightPlayer(rightPrev => {
-                    if (rightPrev.id === null || rightPrev.id === packet.playerId) {
-                        return { id: packet.playerId, value: packet.value };
-                    }
-                    return rightPrev;
-                });
-                return prev;
-            });
+        // POSLOUCHÁME SERVER: Přijímáme kompletní vypočítaný stav
+        conn.on("ReceiveGameState", (state: BallanceGameState) => {
+            setLeftPlayer({ id: state.leftPlayerId, value: state.leftValue });
+            setRightPlayer({ id: state.rightPlayerId, value: state.rightValue });
+            setBallPos(state.ballPosition);
+            
+            if (state.isGameOver) {
+                console.log("Hra skončila!");
+            }
         });
 
         conn.start()
@@ -68,22 +65,23 @@ export default function BalanceGame() {
         };
     }, [roomId]);
 
-    // Simulace odesílání vlastních dat (pokud bys měl senzor, voláš tohle)
-    // useEffect(() => {
-    //     const interval = setInterval(() => {
-    //         if (connection) connection.invoke("SendEnergyData", roomId, Math.random() * 1000);
-    //     }, 1000);
-    //     return () => clearInterval(interval);
-    // }, [connection, roomId]);
+    // SIMULACE ODESÍLÁNÍ DAT
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (connection && connection.state === "Connected") {
+                // Voláme novou metodu SendGameData s typem "ballance"
+                connection.invoke("SendGameData", roomId, "ballance", Math.random() * 1000)
+                    .catch(err => console.error("Error sending data:", err));
+            }
+        }, 1000); // každou sekundu pošle náhodné číslo 0-1000
+
+        return () => clearInterval(interval);
+    }, [connection, roomId]);
 
     const getUserEmail = (): string | null => {
         const userJson = localStorage.getItem('user');
         if (userJson) {
             try { return JSON.parse(userJson).email || null; } catch { }
-        }
-        const token = localStorage.getItem('token');
-        if (token) {
-            try { const p = JSON.parse(atob(token.split('.')[1])); return p.email || p.sub || null; } catch { }
         }
         return null;
     };
@@ -92,12 +90,13 @@ export default function BalanceGame() {
 
     return (
         <Container fluid className="h-screen py-4">
-            <GameHeader gameName="energybattle" userEmail={getUserEmail()} />
+            <GameHeader gameName="ballance" userEmail={getUserEmail()} />
+            
             <Row className="mb-4">
                 <Col className="bg-light rounded-lg shadow p-4 text-center">
                     <h3 className="font-semibold">Biofeedback Balance Aréna</h3>
                     <p className="text-sm text-muted">Místnost: {roomName ?? roomId}</p>
-                    <small>Uklidni se, abys přetáhl váhu na svou stranu</small>
+                    <small>Uklidni se, abys udržel kuličku uprostřed. Server průměruje tvých posledních 30 hodnot.</small>
                 </Col>
             </Row>
 
@@ -107,16 +106,18 @@ export default function BalanceGame() {
                     <PlayerPanel 
                         value={leftPlayer.value} 
                         label={leftPlayer.id ? `Hráč (L)` : "Čekání na hráče..."} 
-                        recentMin={400} 
-                        recentMax={800} 
+                        recentMin={0} 
+                        recentMax={1000} 
                     />
                 </Col>
 
-                {/* Centrální aréna - přepočítává rozdíl mezi GSR */}
+                {/* Centrální aréna - využívá ballPos ze serveru */}
                 <Col md={6}>
                     <BalanceArena 
                         leftValue={leftPlayer.value} 
-                        rightValue={rightPlayer.value} 
+                        rightValue={rightPlayer.value}
+                        // Pokud tvůj BalanceArena komponent podporuje přímé nastavení pozice, 
+                        // můžeš mu ji předat, jinak si ji teď vypočítá z průměrů, které mu posílá server.
                     />
                 </Col>
 
@@ -125,8 +126,8 @@ export default function BalanceGame() {
                     <PlayerPanel 
                         value={rightPlayer.value} 
                         label={rightPlayer.id ? `Hráč (P)` : "Volné místo"} 
-                        recentMin={400} 
-                        recentMax={800} 
+                        recentMin={0} 
+                        recentMax={1000} 
                     />
                 </Col>
             </Row>

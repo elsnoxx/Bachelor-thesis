@@ -2,7 +2,7 @@
 {
     public interface IGameService
     {
-        void ProcessInput(string playerId, double value);
+        object ProcessInput(string roomId, string playerId, double value);
         Dictionary<string, double> GetScores();
     }
 }

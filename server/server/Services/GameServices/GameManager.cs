@@ -15,11 +15,22 @@ namespace server.Services.GameServices
         // Hra -> Service
         private readonly Dictionary<string, IGameService> _gameServices = new();
 
+        private readonly Dictionary<string, string> _roomToGameType = new();
+
         public GameManager()
         {
-            // Inicializace herních služeb
-            _gameServices["EnergyBattle"] = new LudoGameServices();
-            // Můžeš přidat další hry zde
+            _gameServices["ballance"] = new BallanceGameService();
+            _gameServices["energybattle"] = new EnergyBattleGameServices();
+            _gameServices["ludo"] = new LudoGameServices();
+        }
+
+        public object HandleMove(string gameType, string roomId, string playerId, double value)
+        {
+            if (_gameServices.TryGetValue(gameType.ToLower(), out var service))
+            {
+                return service.ProcessInput(roomId, playerId, value);
+            }
+            return null;
         }
 
 
