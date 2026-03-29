@@ -21,7 +21,7 @@ export default function HryPage() {
                                     {game.description}
                                 </Card.Text>
                                 <a href={game.href} className="btn btn-primary mt-auto">
-                                    Hrát {game.name}
+                                    Hrát
                                 </a>
                             </Card.Body>
                         </Card>

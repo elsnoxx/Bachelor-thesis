@@ -38,6 +38,7 @@ services:
     container_name: biofeedback-frontend
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - avatars_data:/usr/share/nginx/html/avatars:ro
     restart: unless-stopped

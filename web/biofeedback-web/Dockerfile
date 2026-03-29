@@ -1,40 +1,35 @@
-# 1. Stage: build React app
+# 1. Stage: build React app (zůstává stejná)
 FROM node:20 AS build
-
 WORKDIR /app
-
-# Zkopíruj package.json a package-lock.json
 COPY package*.json ./
-
-# Nainstaluj dependencies
 RUN npm install
-
-# Zkopíruj celý projekt
 COPY . .
-
-# Build pro produkci
-# RUN npm run build
-
-# Testing Build
 RUN npx vite build
 
-# 2. Stage: servírování přes Nginx
+# 2. Stage: Nginx s automatickým generováním certifikátu
 FROM nginx:alpine
 
-# Odstran defaultní obsah
+# Instalace openssl - opravený příkaz
+RUN apk add --no-cache openssl
+
+# Odstranění defaultů
 RUN rm -rf /usr/share/nginx/html/*
 RUN rm /etc/nginx/conf.d/default.conf
 
-# Zkopíruj vlastní Nginx config
+# Příprava složky pro certifikáty
+RUN mkdir -p /etc/nginx/ssl
+
+# Zkopíruj tvůj nginx.conf
 COPY nginx.conf /etc/nginx/conf.d/
-
-# Zkopíruj build React aplikace do Nginx
-# COPY --from=build /app/build /usr/share/nginx/html
-
-# Testing Copy
 COPY --from=build /app/dist /usr/share/nginx/html
 
+# Příkaz pro vygenerování certifikátu a spuštění nginxu
+# Používáme -nodes (no DES), aby to nevyžadovalo heslo při startu
+CMD ["sh", "-c", "\
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /etc/nginx/ssl/nginx.key \
+    -out /etc/nginx/ssl/nginx.crt \
+    -subj '/C=CZ/ST=Prague/L=Prague/O=Biofeedback/CN=localhost'; \
+    nginx -g 'daemon off;'"]
 
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+EXPOSE 80 443
