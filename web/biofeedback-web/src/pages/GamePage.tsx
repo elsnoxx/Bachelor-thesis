@@ -14,16 +14,7 @@ export default function HryPage() {
                 {games.map((game) => (
                     <Col md={4} key={game.name} className="mb-3">
                         <Card className="h-100">
-                            <Card.Img
-                                variant="top"
-                                src={game.image}
-                                style={{
-                                    height: '200px',
-                                    width: '100%',
-                                    objectFit: 'cover',
-                                    objectPosition: 'center'
-                                }}
-                            />
+                            <Card.Img variant="top" src={game.image} className="gameCardImg" />
                             <Card.Body className="d-flex flex-column">
                                 <Card.Title>{game.name}</Card.Title>
                                 <Card.Text className="flex-grow-1">

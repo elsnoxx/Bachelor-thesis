@@ -12,3 +12,16 @@
   border-radius: 8px;
   overflow: hidden;
 }
+
+.gameCard {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.gameCardImg {
+  width: 100%;
+  height: 60vh;
+  object-fit: cover;
+  object-position: center;
+}
