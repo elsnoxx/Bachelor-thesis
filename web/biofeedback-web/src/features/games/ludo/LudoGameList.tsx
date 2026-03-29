@@ -1,7 +1,7 @@
 import { Col, Row, Button } from "react-bootstrap"
 import { useState } from "react"
-import CreateGameModal from "./components/CreateGameModal"
-import GameRoomsList from "./components/GameRoomsList"
+import CreateGameModal from "../general/CreateGameModal";
+import GameRoomsTable from "../general/GameRoomsTable";
 
 export default function LudoGameList() {
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -23,10 +23,11 @@ export default function LudoGameList() {
                 </Col>
             </Row>
 
-            <GameRoomsList />
+            <GameRoomsTable gameType="ludo" redirectPath="/ludo/game" />
             
             <CreateGameModal 
                 show={showCreateModal} 
+                gameType="ludo"
                 onHide={() => {
                     setShowCreateModal(false);
                     document.location.reload();

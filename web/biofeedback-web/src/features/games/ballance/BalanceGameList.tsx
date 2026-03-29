@@ -1,7 +1,7 @@
 import { Col, Row, Button } from "react-bootstrap"
 import { useState } from "react"
-import CreateGameModal from "./components/CreateGameModal"
-import GameRoomsList from "./components/GameRoomsList"
+import CreateGameModal from "../general/CreateGameModal";
+import GameRoomsTable from "../general/GameRoomsTable";
 
 export default function BalanceGameList() {
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -23,10 +23,11 @@ export default function BalanceGameList() {
                 </Col>
             </Row>
 
-            <GameRoomsList />
+            <GameRoomsTable gameType="ballance" redirectPath="/ballance/game" />
             
             <CreateGameModal 
                 show={showCreateModal} 
+                gameType="ballance"
                 onHide={() => {
                     setShowCreateModal(false);
                     document.location.reload();

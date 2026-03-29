@@ -1,26 +1,26 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Container, Navbar, Badge } from 'react-bootstrap';
-import { BoxArrowLeft, Controller } from 'react-bootstrap-icons';
+import { BoxArrowLeft, Controller, Bluetooth } from 'react-bootstrap-icons'; // Přidán Bluetooth icon
 import { useBle } from '../../../services/BleProvider';
 
 interface GameHeaderProps {
     gameName: string;
-    userEmail: string; // ID aktuálního uživatele pro API request
+    userEmail: string | null;
 }
 
 export default function GameHeader({ gameName, userEmail }: GameHeaderProps) {
     const navigate = useNavigate();
     const { roomId } = useParams<{ roomId: string }>();
-    const { isConnected } = useBle();
+    
+    // Přidána funkce connect z našeho BleProvideru
+    const { isConnected, connect, error } = useBle();
 
     const handleLeave = async () => {
         if (!roomId) return;
-
         try {
             const token = localStorage.getItem('token');
             const apiUrl = import.meta.env.VITE_API_URL;
-            console.log(userEmail);
             const response = await fetch(`${apiUrl}/gamerooms/${roomId}/leave`, {
                 method: 'POST',
                 headers: {
@@ -28,14 +28,10 @@ export default function GameHeader({ gameName, userEmail }: GameHeaderProps) {
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({ userEmail: userEmail })
-                          
             });
 
             if (response.ok) {
-                if (gameName == 'energybattle')
-                    navigate('/hry'); 
-            } else {
-                console.error("Chyba při opouštění místnosti");
+                navigate('/hry'); 
             }
         } catch (error) {
             console.error("Network error při opouštění místnosti:", error);
@@ -50,11 +46,27 @@ export default function GameHeader({ gameName, userEmail }: GameHeaderProps) {
                     {gameName} <small className="text-muted fs-6">| ID: {roomId?.slice(0,8)}...</small>
                 </Navbar.Brand>
 
-                <div className="d-flex align-items-center gap-3">
-                    {/* Indikátor Bluetooth - užitečné vidět i během hry */}
-                    <Badge bg={isConnected ? "success" : "danger"}>
-                        BLE: {isConnected ? "ONLINE" : "OFFLINE"}
-                    </Badge>
+                <div className="d-flex align-items-center gap-2">
+                    {/* Zobrazení chyby, pokud se nepodaří připojit */}
+                    {error && <small className="text-danger me-2" style={{fontSize: '10px'}}>{error}</small>}
+
+                    {/* DYNAMICKÉ TLAČÍTKO / BADGE */}
+                    {!isConnected ? (
+                        <Button 
+                            variant="primary" 
+                            size="sm" 
+                            onClick={connect} 
+                            className="d-flex align-items-center"
+                        >
+                            <Bluetooth className="me-1" /> Připojit senzor
+                        </Button>
+                    ) : (
+                        <Badge bg="success" className="p-2">
+                            BLE: ONLINE
+                        </Badge>
+                    )}
+
+                    <div className="vr mx-2 text-white-50" style={{height: '20px'}}></div>
 
                     <Button variant="outline-danger" size="sm" onClick={handleLeave}>
                         <BoxArrowLeft className="me-1" /> Opustit hru

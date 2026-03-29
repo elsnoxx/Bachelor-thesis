@@ -3,6 +3,7 @@ import { Container } from "react-bootstrap";
 import { useParams, useLocation } from "react-router-dom";
 import { HubConnection, HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import GameHeader from "../general/GameHeader";
+import { useBle } from "../../../services/BleProvider";
 
 interface EnergyBattlePacket {
   playerId: string;
@@ -17,14 +18,15 @@ export default function EnergyBattelGame() {
   const [roomName, setRoomName] = useState<string | null>(passedRoomName ?? null);
   const [connection, setConnection] = useState<HubConnection | null>(null);
   const [packets, setPackets] = useState<EnergyBattlePacket[]>([]);
+  const { gsrValue, isConnected } = useBle();
 
   useEffect(() => {
     if (!roomId) return;
 
     if (!passedRoomName && roomId) {
-            const fallback = sessionStorage.getItem(`roomName_${roomId}`);
-            if (fallback) setRoomName(fallback);
-        }
+      const fallback = sessionStorage.getItem(`roomName_${roomId}`);
+      if (fallback) setRoomName(fallback);
+    }
 
     const conn = new HubConnectionBuilder()
       .withUrl(`${import.meta.env.VITE_API_URL}/gamehub`, {
@@ -36,14 +38,13 @@ export default function EnergyBattelGame() {
     // Definice handleru
     conn.on("ReceiveEnergyData", (data: EnergyBattlePacket) => {
       console.log("Nová data:", data);
-      setPackets(prev => [...prev, data].slice(-20)); // Necháme si jen posledních 20 pro výkon
+      setPackets(prev => [...prev, data].slice(-20));
     });
 
     const start = async () => {
       try {
         await conn.start();
         console.log("SignalR Connected.");
-        // Klíčové: Musí se jmenovat stejně jako v C# (JoinRoom)
         await conn.invoke("JoinRoom", roomId);
       } catch (err) {
         console.error("SignalR Error:", err);
@@ -67,16 +68,25 @@ export default function EnergyBattelGame() {
   };
 
   const getUserEmail = (): string | null => {
-        const userJson = localStorage.getItem('user');
-        if (userJson) {
-            try { return JSON.parse(userJson).email || null; } catch { }
-        }
-        const token = localStorage.getItem('token');
-        if (token) {
-            try { const p = JSON.parse(atob(token.split('.')[1])); return p.email || p.sub || null; } catch { }
-        }
-        return null;
-    };
+    const userJson = localStorage.getItem('user');
+    if (userJson) {
+      try { return JSON.parse(userJson).email || null; } catch { }
+    }
+    const token = localStorage.getItem('token');
+    if (token) {
+      try { const p = JSON.parse(atob(token.split('.')[1])); return p.email || p.sub || null; } catch { }
+    }
+    return null;
+  };
+
+  
+
+  useEffect(() => {
+    if (connection && isConnected && gsrValue !== null) {
+      connection.invoke("SendEnergyData", roomId, gsrValue)
+        .catch(err => console.error(err));
+    }
+  }, [gsrValue, isConnected, connection, roomId]);
 
   return (
     <Container fluid className="py-4">
@@ -85,7 +95,7 @@ export default function EnergyBattelGame() {
       <button onClick={sendTestData} className="btn btn-primary mb-3">
         Poslat náhodná data (Test)
       </button>
-      
+
       <div className="mt-4">
         <h3>Live Data Stream:</h3>
         <ul className="list-group">
