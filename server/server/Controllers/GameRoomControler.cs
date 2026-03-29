@@ -68,7 +68,7 @@ namespace server.Controllers
 
             if (!result.Success)
             {
-                return BadRequest($"User already in the Game Room. {result.Data}");
+                return BadRequest($"User already in the Game Room.");
             }
 
             return Ok($"You join room no. {GameRoomId}");

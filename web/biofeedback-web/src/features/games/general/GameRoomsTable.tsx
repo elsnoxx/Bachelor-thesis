@@ -24,6 +24,7 @@ export default function GameRoomsTable({ gameType, redirectPath }: GameRoomsTabl
     const [joining, setJoining] = useState(false);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [selectedRoom, setSelectedRoom] = useState<{ id: string, name: string } | null>(null);
+    const [apiMessage, setApiMessage] = useState<string | null>(null);
     
     const navigate = useNavigate();
 
@@ -67,26 +68,37 @@ export default function GameRoomsTable({ gameType, redirectPath }: GameRoomsTabl
     const executeJoin = async (roomId: string, password: string | null, roomName: string) => {
         const userEmail = getUserEmail();
         if (!userEmail) return alert('Musíš být přihlášen.');
-        
+
         setJoining(true);
         try {
             const token = localStorage.getItem('token');
             const res = await fetch(`${import.meta.env.VITE_API_URL}/gamerooms/${roomId}/join`, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ UserEmail: userEmail, Password: password ?? '' })
             });
 
-            if (!res.ok) throw new Error("Nepodařilo se připojit k místnosti.");
+            // přečti tělo (JSON nebo text)
+            let body: any = null;
+            const txt = await res.text();
+            try { body = txt ? JSON.parse(txt) : null; } catch { body = txt; }
+
+            console.log('Join response', res.status, body);
+
+            if (!res.ok) {
+                // API posílá text nebo JSON { title/message }, použij to
+                const errMsg = body?.message ?? body?.title ?? body ?? `Server ${res.status}`;
+                throw new Error(errMsg);
+            }
+
+            // úspěch — zobraz konkrétní zprávu pokud ji API posílá
+            setApiMessage(body?.message ?? 'Úspěšně připojeno.');
 
             sessionStorage.setItem(`roomName_${roomId}`, roomName);
             navigate(`${redirectPath}/${roomId}`, { state: { roomName } });
         } catch (err) {
             alert(err instanceof Error ? err.message : 'Chyba připojení');
-            fetchGameRooms(); // Obnovíme seznam při chybě
+            fetchGameRooms();
         } finally {
             setJoining(false);
             setShowPasswordModal(false);
@@ -154,6 +166,7 @@ export default function GameRoomsTable({ gameType, redirectPath }: GameRoomsTabl
                 submitting={joining}
                 onSubmit={(pass) => selectedRoom && executeJoin(selectedRoom.id, pass, selectedRoom.name)}
             />
+            {apiMessage && <Alert variant="info">{apiMessage}</Alert>}
         </div>
     );
 }
