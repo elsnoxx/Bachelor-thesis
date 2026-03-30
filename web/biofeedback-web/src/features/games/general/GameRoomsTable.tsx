@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Alert, Spinner, Button, Badge } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import PasswordModal from './PasswordModal';
+import { RoomService } from '../../../api/RoomService';
 
 interface GameRoom {
     id: string;
@@ -25,7 +26,7 @@ export default function GameRoomsTable({ gameType, redirectPath }: GameRoomsTabl
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [selectedRoom, setSelectedRoom] = useState<{ id: string, name: string } | null>(null);
     const [apiMessage, setApiMessage] = useState<string | null>(null);
-    
+
     const navigate = useNavigate();
 
     // Pomocná funkce pro získání emailu (můžeš ji vyhodit do utility.ts)
@@ -40,21 +41,7 @@ export default function GameRoomsTable({ gameType, redirectPath }: GameRoomsTabl
     const fetchGameRooms = useCallback(async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/gamerooms?gameType=${gameType}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!response.ok) throw new Error(`Chyba serveru: ${response.status}`);
-            
-            const result = await response.json();
-            const rooms = (result.data || []).map((r: any) => ({
-                id: r.id,
-                name: r.name,
-                gameType: r.gameType,
-                password: r.password ?? null,
-                maxPlayers: r.maxPlayers ?? r.MaxPlayers ?? 0,
-                currentPlayers: r.currentPlayers ?? r.CurrentPlayers ?? 0
-            }));
+            const rooms = await RoomService.getGameRooms(gameType);
             setGameRooms(rooms);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Chyba při načítání');
@@ -68,32 +55,10 @@ export default function GameRoomsTable({ gameType, redirectPath }: GameRoomsTabl
     const executeJoin = async (roomId: string, password: string | null, roomName: string) => {
         const userEmail = getUserEmail();
         if (!userEmail) return alert('Musíš být přihlášen.');
-
         setJoining(true);
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/gamerooms/${roomId}/join`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ UserEmail: userEmail, Password: password ?? '' })
-            });
-
-            // přečti tělo (JSON nebo text)
-            let body: any = null;
-            const txt = await res.text();
-            try { body = txt ? JSON.parse(txt) : null; } catch { body = txt; }
-
-            console.log('Join response', res.status, body);
-
-            if (!res.ok) {
-                // API posílá text nebo JSON { title/message }, použij to
-                const errMsg = body?.message ?? body?.title ?? body ?? `Server ${res.status}`;
-                throw new Error(errMsg);
-            }
-
-            // úspěch — zobraz konkrétní zprávu pokud ji API posílá
-            setApiMessage(body?.message ?? 'Úspěšně připojeno.');
-
+            const res = await RoomService.joinRoom(roomId, userEmail, password ?? '');
+            setApiMessage(res?.message ?? 'Úspěšně připojeno.');
             sessionStorage.setItem(`roomName_${roomId}`, roomName);
             navigate(`${redirectPath}/${roomId}`, { state: { roomName } });
         } catch (err) {
@@ -137,9 +102,9 @@ export default function GameRoomsTable({ gameType, redirectPath }: GameRoomsTabl
                                     {isFull && <Badge bg="danger">Plno</Badge>}
                                 </td>
                                 <td>
-                                    <Button 
-                                        variant="success" 
-                                        size="sm" 
+                                    <Button
+                                        variant="success"
+                                        size="sm"
                                         disabled={isFull || joining}
                                         onClick={() => {
                                             if (room.password) {
@@ -159,7 +124,7 @@ export default function GameRoomsTable({ gameType, redirectPath }: GameRoomsTabl
                 </tbody>
             </Table>
 
-            <PasswordModal 
+            <PasswordModal
                 show={showPasswordModal}
                 onHide={() => setShowPasswordModal(false)}
                 roomName={selectedRoom?.name}

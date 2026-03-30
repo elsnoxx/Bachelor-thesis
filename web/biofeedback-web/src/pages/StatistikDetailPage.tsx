@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { StatsService } from '../api/StatsService';
 import {
   LineChart,
   Line,
@@ -44,33 +45,12 @@ export default function StatistikDetailPage() {
     if (!userJson) { setError("Není přihlášen uživatel"); return; }
     const userObj = JSON.parse(userJson);
     const userEmail = userObj.email || userObj.Email || userObj.userEmail || userObj.id;
-    const token = localStorage.getItem("token");
-    const base = import.meta.env.VITE_API_URL || "";
+    if (!userEmail) { setError("Nelze určit email uživatele"); return; }
 
     setLoading(true);
-    fetch(`${base}/stats/biofeedback/${encodeURIComponent(userEmail)}/summary/${encodeURIComponent(id)}`, {
-      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }
-    })
-      .then(async r => {
-        if (!r.ok) throw new Error(`Server ${r.status}`);
-        const data = await r.json();
-        // map server keys (support PascalCase / camelCase)
-        const mapped: DetailBioFeedbackData = {
-          averageGsr: data.averageGsr ?? data.AverageGsr ?? data.average ?? 0,
-          maxGsr: data.maxGsr ?? data.MaxGsr ?? data.max ?? 0,
-          minGsr: data.minGsr ?? data.MinGsr ?? data.min ?? 0,
-          peakCount: data.peakCount ?? data.PeakCount ?? data.peak_count ?? 0,
-          timeAboveThreshold: data.timeAboveThreshold ?? data.TimeAboveThreshold ?? data.time_above_threshold ?? 0,
-          baseline: data.baseline ?? data.Baseline ?? 0,
-          chartData: (data.chartData ?? data.ChartData ?? []).map((p: any) => ({
-            timestamp: p.timestamp ?? p.Timestamp ?? p.time ?? p.Time,
-            value: (p.value ?? p.Value ?? p.gsr ?? p.gsrValue ?? 0),
-            isPeak: !!(p.isPeak ?? p.IsPeak)
-          }))
-        };
-        setSummary(mapped);
-      })
-      .catch(e => setError(e.message || "Chyba"))
+    StatsService.getSessionDetail(userEmail, id)
+      .then(mapped => setSummary(mapped))
+      .catch(e => setError(e?.message || String(e) || "Chyba"))
       .finally(() => setLoading(false));
   }, [id]);
 

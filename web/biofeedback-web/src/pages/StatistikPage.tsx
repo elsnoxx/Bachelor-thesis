@@ -2,6 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import { AuthContext } from "../commpoment/AuthContext";
 import { Table, Spinner } from "react-bootstrap";
 import { Link } from "react-router-dom";
+import { StatsService } from '../api/StatsService';
 
 interface StatItem {
   id: string;
@@ -32,14 +33,6 @@ export default function StatistikyPage() {
       }
     }
 
-    const token = localStorage.getItem("token") || undefined;
-    const base = import.meta.env.VITE_API_URL || "";
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-
     if (!userId) {
       setError("Nelze určit userId.");
       return;
@@ -48,13 +41,9 @@ export default function StatistikyPage() {
     setLoading(true);
     setError(null);
 
-    fetch(`${base}/stats/user/${userId}`, { headers })
-      .then(async (r) => {
-        if (!r.ok) throw new Error(`${r.status}`);
-        const s = await r.json();
-        setStats(Array.isArray(s) ? s : [s]);
-      })
-      .catch((err) => setError(err.message || "Chyba při načítání"))
+    StatsService.getUserStats(userId)
+      .then((list) => setStats(list))
+      .catch((err) => setError(err?.message || String(err) || "Chyba při načítání"))
       .finally(() => setLoading(false));
   }, [user]);
 

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Container, Navbar, Badge } from 'react-bootstrap';
 import { BoxArrowLeft, Controller, Bluetooth } from 'react-bootstrap-icons'; // Přidán Bluetooth icon
 import { useBle } from '../../../services/BleProvider';
+import { RoomService } from '../../../api/RoomService';
 
 interface GameHeaderProps {
     gameName: string;
@@ -12,29 +13,18 @@ interface GameHeaderProps {
 export default function GameHeader({ gameName, userEmail }: GameHeaderProps) {
     const navigate = useNavigate();
     const { roomId } = useParams<{ roomId: string }>();
-    
     // Přidána funkce connect z našeho BleProvideru
     const { isConnected, connect, error } = useBle();
 
     const handleLeave = async () => {
         if (!roomId) return;
         try {
-            const token = localStorage.getItem('token');
-            const apiUrl = import.meta.env.VITE_API_URL;
-            const response = await fetch(`${apiUrl}/gamerooms/${roomId}/leave`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ userEmail: userEmail })
-            });
-
-            if (response.ok) {
-                navigate('/hry'); 
-            }
+            await RoomService.leaveRoom(roomId, userEmail ?? '');
+            if(gameName = 'ballance') navigate('/games/balance')
+            if(gameName = 'energybattle') navigate('/games/energybattle')
+            navigate('/games/ludo'); 
         } catch (error) {
-            console.error("Network error při opouštění místnosti:", error);
+            console.error('Chyba při opouštění místnosti:', error);
         }
     };
 

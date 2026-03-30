@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Form } from 'react-bootstrap';
-
-// Definice podporovaných her
-type GameType = 'ludo' | 'ballance' | 'energybattle';
+import { RoomService, type GameType } from '../../../api/RoomService';
 
 interface GameRoomCreationForm {
     name: string;
@@ -94,44 +92,32 @@ export default function CreateGameModal({ show, onHide, gameType }: CreateGameMo
         if (!validateForm()) return;
 
         setIsSubmitting(true);
-        const { userId, token } = getUserIdAndToken();
+            const { userId } = getUserIdAndToken();
 
-        if (!userId) {
-            alert('Nelze zjistit userId. Přihlaste se prosím znovu.');
-            setIsSubmitting(false);
-            return;
-        }
+            if (!userId) {
+                alert('Nelze zjistit userId. Přihlaste se prosím znovu.');
+                setIsSubmitting(false);
+                return;
+            }
 
-        const gameData = {
-            userId,
-            name: formData.name,
-            gameType, // Použije se dynamicky z props
-            password: formData.password || '',
-            maxPlayers: formData.maxPlayers
-        };
+            const gameData = {
+                userId,
+                name: formData.name,
+                gameType, // Použije se dynamicky z props
+                password: formData.password || undefined,
+                maxPlayers: formData.maxPlayers
+            };
 
-        try {
-            const apiUrl = import.meta.env.VITE_API_URL;
-            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-            if (token && token !== 'null') headers['Authorization'] = `Bearer ${token}`;
-
-            const response = await fetch(`${apiUrl}/gamerooms`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify(gameData)
-            });
-
-            if (response.ok) {
+            try {
+                await RoomService.createRoom(gameData);
                 alert('Hra byla úspěšně vytvořena!');
                 onHide();
-            } else {
+            } catch (error) {
+                console.error(error);
                 alert('Chyba při vytváření hry.');
+            } finally {
+                setIsSubmitting(false);
             }
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setIsSubmitting(false);
-        }
     };
 
     return (
