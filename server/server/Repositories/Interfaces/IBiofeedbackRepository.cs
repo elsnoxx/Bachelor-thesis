@@ -6,5 +6,6 @@ namespace server.Repositories.Interfaces
     {
         Task<IEnumerable<BioFeedback>> GetStatistic(Guid userId);
         Task<IEnumerable<BioFeedback>> GetBySessionAsync(Guid userId, Guid sessionId);
+        Task AddAsync(BioFeedback bioFeedback);
     }
 }

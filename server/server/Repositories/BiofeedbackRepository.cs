@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Org.BouncyCastle.Bcpg.Sig;
 using server.Data;
 using server.Models.DB;
 using server.Repositories.Interfaces;
@@ -28,6 +29,12 @@ namespace server.Repositories
             return await _context.BioFeedbacks
                 .Where(b => b.UserId == userId && b.GameRoomId == sessionId)
                 .ToListAsync(); // Tady se filtrace provede už v SQL databázi
+        }
+
+        public async Task AddAsync(BioFeedback bioFeedback)
+        {
+            _context.BioFeedbacks.Add(bioFeedback);
+            await _context.SaveChangesAsync();
         }
     }
 }

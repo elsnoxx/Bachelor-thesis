@@ -20,6 +20,42 @@ namespace server.Services.DbServices
             _userRepository = userRepository;
         }
 
+        public async Task AddStatisticByEmailAsync(string email, Statistic statistic)
+        {
+            var user = await _userRepository.GetByEmailAsync(email);
+            if (user != null)
+            {
+                var stats = new Statistic
+                {
+                    UserId = user.Id,
+                    GameType = statistic.GameType,
+                    AverageGsr = statistic.AverageGsr,
+                    BestScore = statistic.BestScore,
+                    TotalSessions = statistic.TotalSessions,
+                    LastPlayed = statistic.LastPlayed
+                };
+                await _statisticRepo.AddAsync(statistic);
+            }
+        }
+
+        public async Task AddBioFeedbackByEmailAsync(string email, Guid roomGuid, float value)
+        {
+            // Najdeme uživatele podle emailu
+            var user = await _userRepository.GetByEmailAsync(email);
+
+            if (user != null)
+            {
+                var bio = new BioFeedback
+                {
+                    UserId = user.Id, // Tady získáme to správné Guid
+                    GameRoomId = roomGuid,
+                    GsrValue = value,
+                    Timestamp = DateTime.UtcNow
+                };
+                await _bioRepo.AddAsync(bio);
+            }
+        }
+
         public async Task<IEnumerable<Statistic>> GetUserStatsAsync(string userEmail)
         {
             var user = await _userRepository.GetByEmailAsync(userEmail);

@@ -4,7 +4,9 @@
     {
         private readonly Dictionary<string, double> _scores = new();
 
-
+        public EnergyBattleGameServices()
+        {
+        }
         public object ProcessInput(string roomId, string playerId, double value)
         {
             _scores[playerId] = value;

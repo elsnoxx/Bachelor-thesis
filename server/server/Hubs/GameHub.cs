@@ -1,18 +1,30 @@
-﻿using Microsoft.AspNetCore.SignalR;
-using System.Threading.Tasks;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.SignalR;
 using Serilog;
-using System.Security.AccessControl;
+using server.Repositories;
+using server.Repositories.Interfaces;
+using server.Services.DbServices.Interfaces;
 using server.Services.GameServices;
+using System.Security.AccessControl;
+using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace server.Hubs
 {
+    [Authorize]
     public class GameHub : Hub
     {
         private readonly GameManager _gameManager;
+        private readonly IStatisticServices _statisticService;
+        private readonly IUserRepository _userRepository;
+        private readonly IStatisticServices _statisticServices;
 
-        public GameHub(GameManager gameManager)
+        public GameHub(GameManager gameManager, IStatisticServices statistic, IUserRepository userRepository, IStatisticServices statisticServices)
         {
             _gameManager = gameManager;
+            _statisticService = statistic;
+            _userRepository = userRepository;
+            _statisticServices = statisticServices;
         }
 
         // Metoda, kterou volá tvůj frontend přes .invoke("JoinRoom", roomId)
@@ -56,17 +68,19 @@ namespace server.Hubs
         /// </summary>
         public async Task SendGameData(string roomId, string gameType, double value)
         {
-            // Získáme ID (buď z JWT tokenu/Emailu, nebo connectionId jako fallback)
-            var userId = Context.User?.Identity?.Name ?? Context.ConnectionId;
+            // 1. Získáme email z tokenu (to, co máš v logu r@r.cz)
+            var userEmail = Context.User?.Identity?.Name;
 
-            // 1. Necháme GameManager a příslušnou Service přepočítat stav (včetně těch 30 hodnot)
-            var gameState = _gameManager.HandleMove(gameType, roomId, userId, value);
+            if (string.IsNullOrEmpty(userEmail) || !Guid.TryParse(roomId, out Guid roomGuid))
+                return;
+
+            
+
+            // 3. Zpracujeme pohyb v paměti (GameManager pracuje se stringem/emailem jako ID)
+            var gameState = _gameManager.HandleMove(gameType, roomId, userEmail, value);
 
             if (gameState != null)
             {
-                Log.Information($"Game state updated for room {roomId} by player {userId}: {gameState}");
-                // 2. Rozešleme aktualizovaný, vypočítaný stav celé místnosti
-                // Klient dostane: ballPosition, leftValue (průměr), rightValue (průměr), atd.
                 await Clients.Group(roomId).SendAsync("ReceiveGameState", gameState);
             }
         }
@@ -90,5 +104,19 @@ namespace server.Hubs
         //        await Clients.Group(roomId).SendAsync("UpdateLudoState", game.GetState());
         //    }
         //}
+
+        // Přidej si pomocnou vlastnost do GameHub.cs
+        private async Task<Guid?> GetUserGuidFromEmail()
+        {
+            // 1. Vytáhneme email z claimů (podle toho, co vidíš v logu)
+            var email = Context.User?.Identity?.Name
+                     ?? Context.User?.FindFirst(ClaimTypes.Email)?.Value;
+
+            if (string.IsNullOrEmpty(email)) return null;
+
+            // 2. Najdeme uživatele v DB přes tvou existující UserRepository
+            var user = await _userRepository.GetByEmailAsync(email);
+            return user?.Id;
+        }
     }
 }

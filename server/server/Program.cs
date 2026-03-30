@@ -106,6 +106,10 @@ namespace server
             builder.Services.AddScoped<IStatisticServices, StatisticServices>();
             builder.Services.AddScoped<IJwtUtils, JwtUtils>();
 
+            builder.Services.AddSingleton<BallanceGameService>();
+            builder.Services.AddSingleton<EnergyBattleGameServices>();
+            builder.Services.AddSingleton<LudoGameServices>();
+
             builder.Services.AddScoped<FileHelper>();
 
 

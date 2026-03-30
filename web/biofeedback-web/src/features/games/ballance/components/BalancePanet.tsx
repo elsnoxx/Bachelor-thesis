@@ -1,69 +1,112 @@
 import React from "react";
 
 type Props = {
-  width?: number;
-  height?: number;
-  onFall?: (side: "left" | "right") => void;
   leftValue?: number;
   rightValue?: number;
   min?: number;
   max?: number;
   targetMin?: number;
   targetMax?: number;
+  height?: number;
 };
 
 export default function BalanceArena({
-  width = 520,
-  height = 260,
-  onFall,
   leftValue = 0,
   rightValue = 0,
   min = 0,
   max = 1000,
-  targetMin = 500,
-  targetMax = 800,
+  targetMin = 400,
+  targetMax = 600,
+  height = 200,
 }: Props) {
-  // průměr a normalizace do [0..1]
   const combined = (leftValue + rightValue) / 2;
   const range = Math.max(1, max - min);
   const norm = Math.min(1, Math.max(0, (combined - min) / range));
 
-  // % pozice a cílová oblast v rámci SVG viewBox 0..100
+  // Pozice kuličky (0 až 100)
   const cxPct = norm * 100;
-  const tStartPct = Math.min(100, Math.max(0, ((targetMin - min) / range) * 100));
-  const tEndPct = Math.min(100, Math.max(0, ((targetMax - min) / range) * 100));
-  const tWidthPct = Math.max(0, tEndPct - tStartPct);
+  
+  // Výpočet náklonu (tilt) v stupních (max např. 5 stupňů)
+  const tilt = (norm - 0.5) * 10; 
 
-  const arenaH = height;
+  const tStartPct = ((targetMin - min) / range) * 100;
+  const tEndPct = ((targetMax - min) / range) * 100;
+  const tWidthPct = tEndPct - tStartPct;
+
+  const inTarget = combined >= targetMin && combined <= targetMax;
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center">
-      <div className="w-full max-w-3xl">
-        <div className="bg-white rounded-lg shadow p-4 overflow-hidden">
-          <div className="relative" style={{ height: arenaH }}>
-            <div className="absolute inset-0 bg-gradient-to-b from-gray-50 to-gray-100 rounded" />
+    <div className="w-full flex flex-col items-center gap-4">
+      {/* Indikátory stran */}
+      <div className="w-full max-w-3xl flex justify-between px-4 font-black text-gray-300 text-2xl">
+        <span className={norm < 0.3 ? "text-red-500 transition-colors" : ""}>L</span>
+        <span className={inTarget ? "text-emerald-500" : ""}>CENTER</span>
+        <span className={norm > 0.7 ? "text-red-500 transition-colors" : ""}>P</span>
+      </div>
 
-            {/* responzivní SVG: viewBox 0..100, width 100% */}
-            <svg width="100%" height={arenaH} viewBox="0 0 100 100" className="block">
-              <rect x="0" y="0" width="100" height="100" fill="transparent" />
-
-              {/* target band (v % z šířky) */}
-              <rect
-                x={tStartPct}
-                y={12}
-                width={tWidthPct}
-                height={76}
-                fill="rgba(16,185,129,0.06)"
-                rx={2}
-              />
-
-              {/* centerline (vizuální) */}
-              <line x1={50} x2={50} y1={8} y2={92} stroke="#e5e7eb" strokeWidth={0.6} />
-
-              {/* kulička: cx v procentech, cy uprostřed (50), r v jednotkách viewBox */}
-              <circle cx={cxPct} cy={50} r={4.5} fill="#3b82f6" stroke="#111827" strokeOpacity={0.08} />
-            </svg>
+      <div className="w-full max-w-3xl perspective-1000">
+        <div 
+          className="relative bg-white rounded-2xl shadow-xl overflow-hidden border-4 border-gray-100 transition-transform duration-200 ease-out"
+          style={{ 
+            height: height,
+            transform: `rotateZ(${tilt}deg)`, // Vizuální naklánění celé arény
+          }}
+        >
+          {/* Pozadí s gradientem nebezpečí */}
+          <div className="absolute inset-0 flex">
+            <div className="w-1/4 h-full bg-gradient-to-r from-red-50 to-transparent opacity-50" />
+            <div className="w-2/4 h-full" />
+            <div className="w-1/4 h-full bg-gradient-to-l from-red-50 to-transparent opacity-50" />
           </div>
+
+          <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+            {/* Cílová zóna (Target Area) */}
+            <rect
+              x={tStartPct}
+              y={0}
+              width={tWidthPct}
+              height={100}
+              fill={inTarget ? "#10b981" : "#e5e7eb"}
+              fillOpacity={inTarget ? "0.15" : "0.1"}
+              className="transition-colors duration-300"
+            />
+
+            {/* Středová ryska */}
+            <line x1="50" y1="20" x2="50" y2="80" stroke="#d1d5db" strokeWidth="0.5" strokeDasharray="2 2" />
+
+            {/* "Provaz" nebo kolejnice */}
+            <line x1="10" y1="50" x2="90" y2="50" stroke="#f3f4f6" strokeWidth="2" strokeLinecap="round" />
+
+            {/* Kulička (Balance Ball) */}
+            <g style={{ transition: 'all 0.1s ease-out' }}>
+              {/* Stín kuličky */}
+              <circle cx={cxPct} cy={55} r={4} fill="black" fillOpacity="0.05" />
+              {/* Hlavní kulička */}
+              <circle
+                cx={cxPct}
+                cy={50}
+                r={5}
+                fill={inTarget ? "#10b981" : "#3b82f6"}
+                stroke="white"
+                strokeWidth="1.5"
+                className="shadow-lg"
+              />
+              {/* Odlesk na kuličce */}
+              <circle cx={cxPct - 1.5} cy={48.5} r={1} fill="white" fillOpacity="0.4" />
+            </g>
+          </svg>
+
+          {/* Varovné šipky při velkém náklonu */}
+          {norm < 0.2 && (
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 animate-pulse text-red-500 font-bold">
+              ◀ FALLING
+            </div>
+          )}
+          {norm > 0.8 && (
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 animate-pulse text-red-500 font-bold">
+              FALLING ▶
+            </div>
+          )}
         </div>
       </div>
     </div>

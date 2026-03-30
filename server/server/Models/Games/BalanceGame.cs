@@ -9,6 +9,10 @@ namespace server.Models.Games
         public string RoomId { get; set; }
         public string LeftPlayerId { get; set; }
         public string RightPlayerId { get; set; }
+        public bool WasSaved { get; set; } = false;
+
+        public DateTime? StartTime { get; set; }
+        public int DurationSeconds { get; set; } = 120;
 
         // Fronty pro ukládání historie hodnot
         private readonly Queue<double> _leftHistory = new();
@@ -50,6 +54,14 @@ namespace server.Models.Games
             return Math.Clamp(combined / 10.0, 0, 100);
         }
 
-        public bool IsGameOver => GetBallPosition() <= 0 || GetBallPosition() >= 100;
+        public int GetRemainingTime()
+        {
+            if (!StartTime.HasValue) return DurationSeconds;
+            var elapsed = (DateTime.UtcNow - StartTime.Value).TotalSeconds;
+            var remaining = DurationSeconds - (int)elapsed;
+            return Math.Max(0, remaining);
+        }
+
+        public bool IsGameOver => GetBallPosition() <= 0 || GetBallPosition() >= 100 || GetRemainingTime() <= 0;
     }
 }

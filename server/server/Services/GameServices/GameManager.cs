@@ -17,11 +17,11 @@ namespace server.Services.GameServices
 
         private readonly Dictionary<string, string> _roomToGameType = new();
 
-        public GameManager()
+        public GameManager(BallanceGameService ballanceService, EnergyBattleGameServices energyService, LudoGameServices ludoService)
         {
-            _gameServices["ballance"] = new BallanceGameService();
-            _gameServices["energybattle"] = new EnergyBattleGameServices();
-            _gameServices["ludo"] = new LudoGameServices();
+            _gameServices["ballance"] = ballanceService;
+            _gameServices["energybattle"] = energyService;
+            _gameServices["ludo"] = ludoService;
         }
 
         public object HandleMove(string gameType, string roomId, string playerId, double value)

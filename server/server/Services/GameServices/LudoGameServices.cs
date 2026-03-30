@@ -7,6 +7,9 @@ namespace server.Services.GameServices
     {
         private readonly Dictionary<string, double> _scores = new();
 
+        public LudoGameServices()
+        {
+        }
 
         public object ProcessInput(string roomId, string playerId, double value)
         {

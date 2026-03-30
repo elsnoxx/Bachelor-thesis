@@ -21,5 +21,11 @@ namespace server.Repositories
                 .ToListAsync();
         }
 
+        public async Task AddAsync(Statistic statistic)
+        {
+            _context.Statistics.Add(statistic);
+            await _context.SaveChangesAsync();
+
+        }
     }
 }
