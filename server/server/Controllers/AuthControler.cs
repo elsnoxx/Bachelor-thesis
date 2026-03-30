@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using server.Models.Auth;
+using server.Models.DB;
 using server.Services.DbServices.Interfaces;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
@@ -28,13 +30,31 @@ namespace server.Controllers
 
             try
             {
+                // HttpContext je zde dostupný automaticky, předáváme ho do servisy
                 var result = await _authDbService.LoginAsync(userLogin, HttpContext);
+
                 if (result.Success)
                 {
-                    return Ok(new { Token = result.Data.tokenJWT, RefreshToken = result.Data.refreshToken  });
+                    // Nastavení cookie přímo přes vlastnost Response
+                    var cookieOptions = new CookieOptions
+                    {
+                        HttpOnly = true,
+                        Secure = true, // Pokud testuješ na čistém HTTP (ne HTTPS), dej false
+                        SameSite = SameSiteMode.None,
+                        Expires = DateTime.UtcNow.AddDays(7)
+                    };
+
+                    // Tady to je - používáš vlastnost Response, která patří k ControllerBase
+                    Response.Cookies.Append("refresh_token", result.Data.refreshToken, cookieOptions);
+
+                    return Ok(new
+                    {
+                        Token = result.Data.tokenJWT,
+                        RefreshToken = result.Data.refreshToken
+                    });
                 }
+
                 return Unauthorized(result.Data);
-                
             }
             catch (Exception ex)
             {
@@ -44,26 +64,22 @@ namespace server.Controllers
         }
 
         [HttpPost("refresh")]
-        public async Task<IActionResult> Logout()
+        public async Task<IActionResult> Refresh()
         {
-            if(!Request.Cookies.TryGetValue("refresh_token", out var refreshTokenValue))
+            // Zkontroluj, zda se cookie jmenuje "refresh_token" nebo "refreshToken"
+            if (!Request.Cookies.TryGetValue("refresh_token", out var refreshTokenValue))
             {
-                return BadRequest("No refresh token provided");
+                return Unauthorized("Missing refresh token cookie");
             }
-            try
+
+            var result = await _authDbService.RefreshTokenAsync(refreshTokenValue, HttpContext);
+
+            if (result.Success)
             {
-                var result = await _authDbService.RefreshTokenAsync(refreshTokenValue, HttpContext);
-                if (result.Success)
-                {
-                    return Ok(new { Token = result.Data.tokenJWT, RefreshToken = result.Data.refreshToken });
-                }
-                return Unauthorized(result.Data);
+                // Vracíme JSON s novým JWT, Refresh token zůstává v cookie (nastaveno v servise)
+                return Ok(new { Token = result.Data.tokenJWT });
             }
-            catch (Exception ex)
-            {
-                Log.Error($"Internal server error: {ex}");
-                return StatusCode(500, "Internal server error");
-            }
+            return Unauthorized();
         }
 
         [HttpPost("register")]

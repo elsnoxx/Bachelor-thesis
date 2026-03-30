@@ -1,6 +1,7 @@
 import React, { useState, useContext } from "react";
 import { Modal, Form, Button, InputGroup } from "react-bootstrap";
 import { AuthContext } from "./AuthContext";
+import api from "../api/axiosInstance";
 
 export default function LoginModal({ show, onHide }: { show: boolean; onHide: () => void }) {
   const [email, setEmail] = useState("");
@@ -12,26 +13,26 @@ export default function LoginModal({ show, onHide }: { show: boolean; onHide: ()
     e.preventDefault();
     setLoading(true);
     try {
-      const apiUrl = import.meta.env.VITE_API_URL;
-      const res = await fetch(`${apiUrl}/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      if (!res.ok) throw new Error("Login failed");
-      const data = await res.json(); // { Token: "...", RefreshToken: "..." }
-      const token = data?.Token || data?.token;
-      if (!token) throw new Error("No token returned");
-      localStorage.setItem("token", token);
-      auth.login(token, { email }); // <--- nastavit user, aby navbar poznal přihlášení
-      onHide();
+        // POUŽIJ AXIOS (api), NE FETCH
+        const res = await api.post("/login", { email, password });
+        
+        // Axios vrací data přímo v .data
+        const data = res.data; 
+        
+        // Sjednoť si case-sensitivity (C# vrací Token, JS chce často token)
+        const token = data?.Token || data?.token;
+        
+        if (!token) throw new Error("No token returned");
+        
+        auth.login(token, { email }); 
+        onHide();
     } catch (err) {
-      console.error(err);
-      alert("Přihlášení selhalo");
+        console.error(err);
+        alert("Přihlášení selhalo");
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  };
+};
 
   return (
     <Modal show={show} onHide={onHide} centered>
