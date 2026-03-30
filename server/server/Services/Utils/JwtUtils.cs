@@ -36,7 +36,7 @@ namespace server.Services.Utils
                 issuer: jwtIssuer,
                 audience: null,
                 claims: claims,
-                expires: DateTime.Now.AddDays(1),
+                expires: DateTime.Now.AddMinutes(10),
                 signingCredentials: creds);
 
             var handler = new JwtSecurityTokenHandler();
