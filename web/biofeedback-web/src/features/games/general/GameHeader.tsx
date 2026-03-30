@@ -15,14 +15,13 @@ export default function GameHeader({ gameName, userEmail }: GameHeaderProps) {
     const { roomId } = useParams<{ roomId: string }>();
     // Přidána funkce connect z našeho BleProvideru
     const { isConnected, connect, error } = useBle();
-
     const handleLeave = async () => {
         if (!roomId) return;
         try {
             await RoomService.leaveRoom(roomId, userEmail ?? '');
-            if(gameName = 'ballance') navigate('/games/balance')
-            if(gameName = 'energybattle') navigate('/games/energybattle')
-            navigate('/games/ludo'); 
+            if(gameName == 'ballance') navigate('/games/balance');
+            if(gameName == 'energybattle') navigate('/games/energybattle');
+            if(gameName == 'ludo') navigate('/games/ludo'); 
         } catch (error) {
             console.error('Chyba při opouštění místnosti:', error);
         }
