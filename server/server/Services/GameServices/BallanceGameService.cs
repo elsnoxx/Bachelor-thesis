@@ -99,26 +99,37 @@ namespace server.Services.GameServices
                 Log.Information("[DB SAVE] Saving stats for room {RoomId}", game.RoomId);
 
                 var playersToSave = new[] {
-                new { Email = game.LeftPlayerId, Side = "Left" },
-                new { Email = game.RightPlayerId, Side = "Right" }
-            };
+            new { Email = game.LeftPlayerId, Side = "Left" },
+            new { Email = game.RightPlayerId, Side = "Right" }
+        };
 
                 using var scope = _scopeFactory.CreateScope();
                 var statisticService = scope.ServiceProvider.GetRequiredService<IStatisticServices>();
+
+                if (!Guid.TryParse(game.RoomId, out Guid roomGuid)) return;
 
                 foreach (var p in playersToSave)
                 {
                     if (string.IsNullOrEmpty(p.Email)) continue;
 
+                    // 1. Získáme výpočet z BioFeedback tabulky pro tuto hru
+                    var summary = await statisticService.GetSessionSummaryAsync(p.Email, roomGuid);
+
+                    // 2. Naplníme model statistiky
                     var stats = new Statistic
                     {
                         GameType = "ballance",
                         LastPlayed = DateTime.UtcNow,
-                        TotalSessions = 1
+                        TotalSessions = 1,
+                        // Tady mapujeme vypočítaná data
+                        AverageGsr = summary?.Avg ?? 0,
+                        // Pokud chceš Min/Max, přidej si je do modelu Statistic, 
+                        // nebo použij BestScore pro Max (pokud je to žádoucí)
+                        BestScore = summary?.Max ?? 0
                     };
 
                     await statisticService.AddStatisticByEmailAsync(p.Email, stats);
-                    Log.Debug("[DB SAVE] Stats saved for {Email}", p.Email);
+                    Log.Debug("[DB SAVE] Stats saved for {Email}. Avg GSR: {Avg}", p.Email, stats.AverageGsr);
                 }
             }
             catch (Exception ex)

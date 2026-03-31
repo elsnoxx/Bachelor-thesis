@@ -16,12 +16,15 @@ namespace server.Services.GameServices
         private readonly Dictionary<string, IGameService> _gameServices = new();
 
         private readonly Dictionary<string, string> _roomToGameType = new();
+        private readonly LudoGameServices _ludoService;
 
         public GameManager(BallanceGameService ballanceService, EnergyBattleGameServices energyService, LudoGameServices ludoService)
         {
             _gameServices["ballance"] = ballanceService;
             _gameServices["energybattle"] = energyService;
             _gameServices["ludo"] = ludoService;
+
+            _ludoService = ludoService;
         }
 
         public object HandleMove(string gameType, string roomId, string playerId, double value)
@@ -32,6 +35,12 @@ namespace server.Services.GameServices
             }
             return null;
         }
+
+        public object LudoRollDice(string roomId, string playerId)
+        => _ludoService.RollDice(roomId, playerId);
+
+        public object LudoMovePiece(string roomId, string playerId, string pieceId)
+            => _ludoService.MovePiece(roomId, playerId, pieceId);
 
 
         // Přidání hráče do hry
@@ -45,6 +54,7 @@ namespace server.Services.GameServices
 
             _gameRooms[gameType].Add(connectionId);
         }
+
 
         // Odebrání hráče při odpojení
         public void RemovePlayer(string connectionId)

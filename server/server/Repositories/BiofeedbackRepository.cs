@@ -36,5 +36,12 @@ namespace server.Repositories
             _context.BioFeedbacks.Add(bioFeedback);
             await _context.SaveChangesAsync();
         }
+
+        public async Task<IEnumerable<BioFeedback>> GetBioFeedbackBySesionAndUSer(Guid userId, Guid sessionId)
+        {
+            return await _context.BioFeedbacks
+                .Where(b => b.UserId == userId && b.GameRoomId == sessionId)
+                .ToListAsync();
+        }
     }
 }

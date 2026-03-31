@@ -85,38 +85,25 @@ namespace server.Hubs
             }
         }
 
-        //public async Task LudoRollDice(string roomId)
-        //{
-        //    var game = _gameManager.GetLudoGame(roomId);
-        //    var value = game.RollDice(); // Logika v C#
-
-        //    // Pošleme aktualizovaný stav všem v místnosti
-        //    await Clients.Group(roomId).SendAsync("UpdateLudoState", game.GetState());
-        //}
-
-        //public async Task LudoMovePiece(string roomId, string pieceId)
-        //{
-        //    var game = _gameManager.GetLudoGame(roomId);
-        //    bool success = game.TryMove(pieceId); // Ověření a posun v C#
-
-        //    if (success)
-        //    {
-        //        await Clients.Group(roomId).SendAsync("UpdateLudoState", game.GetState());
-        //    }
-        //}
-
-        // Přidej si pomocnou vlastnost do GameHub.cs
-        private async Task<Guid?> GetUserGuidFromEmail()
+        public async Task LudoRollDice(string roomId)
         {
-            // 1. Vytáhneme email z claimů (podle toho, co vidíš v logu)
-            var email = Context.User?.Identity?.Name
-                     ?? Context.User?.FindFirst(ClaimTypes.Email)?.Value;
+            var userEmail = Context.User?.Identity?.Name;
+            // _gameManager by měl mít metodu, která vrátí LudoService
+            var state = _gameManager.LudoRollDice(roomId, userEmail);
+            if (state != null)
+            {
+                await Clients.Group(roomId).SendAsync("ReceiveLudoState", state);
+            }
+        }
 
-            if (string.IsNullOrEmpty(email)) return null;
-
-            // 2. Najdeme uživatele v DB přes tvou existující UserRepository
-            var user = await _userRepository.GetByEmailAsync(email);
-            return user?.Id;
+        public async Task LudoMovePiece(string roomId, string pieceId)
+        {
+            var userEmail = Context.User?.Identity?.Name;
+            var state = _gameManager.LudoMovePiece(roomId, userEmail, pieceId);
+            if (state != null)
+            {
+                await Clients.Group(roomId).SendAsync("ReceiveLudoState", state);
+            }
         }
     }
 }

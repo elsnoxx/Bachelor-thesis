@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using server.Models.DB;
 using server.Models.DTO;
 using server.Repositories.Interfaces;
@@ -36,6 +37,27 @@ namespace server.Services.DbServices
                 };
                 await _statisticRepo.AddAsync(statistic);
             }
+        }
+
+        public async Task<BioSummary?> GetSessionSummaryAsync(string email, Guid roomId)
+        {
+            var user = await _userRepository.GetByEmailAsync(email);
+            if (user == null) return null;
+
+            // 1. Získáme data z repozitáře (tady se provedou a stáhnou do RAM)
+            var records = await _bioRepo.GetBioFeedbackBySesionAndUSer(user.Id, roomId);
+
+            // 2. Kontrola, jestli máme vůbec nějaká data (aby Average nehodil chybu)
+            if (records == null || !records.Any())
+                return null;
+
+            // 3. Výpočet v paměti serveru
+            return new BioSummary
+            {
+                Avg = (float)records.Average(b => b.GsrValue),
+                Min = (float)records.Min(b => b.GsrValue),
+                Max = (float)records.Max(b => b.GsrValue)
+            };
         }
 
         public async Task AddBioFeedbackByEmailAsync(string email, Guid roomGuid, float value)
