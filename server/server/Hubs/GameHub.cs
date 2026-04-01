@@ -44,14 +44,12 @@ namespace server.Hubs
             var userEmail = Context.User?.Identity?.Name;
             if (string.IsNullOrEmpty(userEmail)) return;
 
-            // Voláme HandleMove s typem "energybattle"
-            // To zajistí, že se zavolá ProcessInput v EnergyBattleGameServices
-            var gameState = _gameManager.HandleMove("energybattle", roomId, userEmail, value);
+            // Získáme surový stav hry (seznam hráčů)
+            var result = _gameManager.HandleMove("energybattle", roomId, userEmail, value);
 
-            if (gameState != null)
+            if (result != null)
             {
-                // Posíláme vypočítaný stav (me, opponent, health, energy)
-                await Clients.Group(roomId).SendAsync("ReceiveGameState", gameState);
+                await Clients.Group(roomId).SendAsync("ReceiveGameState", result);
             }
         }
 

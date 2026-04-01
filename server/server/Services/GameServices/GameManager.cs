@@ -6,17 +6,13 @@ namespace server.Services.GameServices
 {
     public class GameManager
     {
-        // Připojení hráčů: ConnectionId -> Player
         private readonly Dictionary<string, Player> _connectedPlayers = new();
-
-        // Hra -> room -> hráči
         private readonly Dictionary<string, HashSet<string>> _gameRooms = new();
-
-        // Hra -> Service
         private readonly Dictionary<string, IGameService> _gameServices = new();
-
         private readonly Dictionary<string, string> _roomToGameType = new();
+
         private readonly LudoGameServices _ludoService;
+        private readonly EnergyBattleGameServices _energyService;
 
         public GameManager(BallanceGameService ballanceService, EnergyBattleGameServices energyService, LudoGameServices ludoService)
         {
@@ -25,9 +21,13 @@ namespace server.Services.GameServices
             _gameServices["ludo"] = ludoService;
 
             _ludoService = ludoService;
+            _energyService = energyService;
         }
 
-        public object HandleMove(string gameType, string roomId, string playerId, double value)
+        // TATO METODA TI CHYBĚLA - Hub ji potřebuje pro přístup k Fire()
+        public EnergyBattleGameServices GetEnergyService() => _energyService;
+
+        public object? HandleMove(string gameType, string roomId, string playerId, double value)
         {
             if (_gameServices.TryGetValue(gameType.ToLower(), out var service))
             {
@@ -36,14 +36,19 @@ namespace server.Services.GameServices
             return null;
         }
 
-        public object LudoRollDice(string roomId, string playerId)
-        => _ludoService.RollDice(roomId, playerId);
+        // Přidána kontrola na null, aby zmizely warningy
+        public object? LudoRollDice(string roomId, string? playerId)
+        {
+            if (string.IsNullOrEmpty(playerId)) return null;
+            return _ludoService.RollDice(roomId, playerId);
+        }
 
-        public object LudoMovePiece(string roomId, string playerId, string pieceId)
-            => _ludoService.MovePiece(roomId, playerId, pieceId);
+        public object? LudoMovePiece(string roomId, string? playerId, string pieceId)
+        {
+            if (string.IsNullOrEmpty(playerId)) return null;
+            return _ludoService.MovePiece(roomId, playerId, pieceId);
+        }
 
-
-        // Přidání hráče do hry
         public void AddPlayerToGame(string gameType, string connectionId, string playerName)
         {
             var player = new Player { ConnectionId = connectionId, PlayerName = playerName, GameType = gameType };
@@ -55,8 +60,6 @@ namespace server.Services.GameServices
             _gameRooms[gameType].Add(connectionId);
         }
 
-
-        // Odebrání hráče při odpojení
         public void RemovePlayer(string connectionId)
         {
             if (!_connectedPlayers.ContainsKey(connectionId)) return;
@@ -64,13 +67,5 @@ namespace server.Services.GameServices
             _gameRooms[gameType]?.Remove(connectionId);
             _connectedPlayers.Remove(connectionId);
         }
-        public void GetPlayersInGame(string gameType)
-        {
-            foreach (var player in _connectedPlayers.Values)
-            {
-                Log.Information($"{player.PlayerName}");
-            }
-        }
-
     }
 }
