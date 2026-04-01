@@ -14,12 +14,21 @@ namespace server.Repositories
             _context = context;
         }
 
+        public async Task UpdateGameRoomAsync(GameRoom gameRoom)
+        {
+            await Task.Run(() =>
+            {
+                _context.GameRooms.Update(gameRoom);
+                _context.SaveChanges();
+            });
+        }
+
         public async Task<IEnumerable<GameRoom>> AllGameRoomsAsync(string gameType)
         {
             return await _context.GameRooms
-                .Where(gr => gr.GameType == gameType)
+                .Where(gr => gr.GameType == gameType && gr.Status == "Waiting")
                 .Include(gr => gr.Sessions)
-                .ThenInclude(s => s.User)
+                    .ThenInclude(s => s.User)
                 .AsSplitQuery()
                 .ToListAsync();
         }

@@ -5,6 +5,7 @@ import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
 import PlayerPanel from "./components/PlayerPanel";
 import BalanceArena from "./components/BalancePanet";
 import GameHeader from "../general/GameHeader";
+import GameOverModal from "../general/GameOverModal";
 
 // Definujeme rozhraní pro stav, který nám teď posílá C# server
 interface BallanceGameState {
@@ -15,6 +16,8 @@ interface BallanceGameState {
     rightPlayerId: string | null;
     isGameOver: boolean;
     remainingTime: number;
+    isWin: boolean;
+    endReason: string | null;
 }
 
 export default function BalanceGame() {
@@ -25,6 +28,7 @@ export default function BalanceGame() {
     const [connection, setConnection] = useState<HubConnection | null>(null);
     const [timeLeft, setTimeLeft] = useState<number>(120);
     const [gameOver, setGameOver] = useState(false);
+    const [gameResult, setGameResult] = useState<{ winnerId: string | null, reason: string | null } | null>(null);
 
     // Stavy pro hráče a kuličku (nyní synchronizované se serverem)
     const [leftPlayer, setLeftPlayer] = useState<{ id: string | null, value: number }>({ id: null, value: 500 });
@@ -63,7 +67,11 @@ export default function BalanceGame() {
 
             if (state.isGameOver) {
                 setGameOver(true);
-                console.log("Hra skončila!");
+                setGameResult({
+                    isWin: state.isWin,
+                    reason: state.endReason
+                });
+                console.log("Hra skončila!", state.isWin);
             }
         });
 
@@ -102,6 +110,9 @@ export default function BalanceGame() {
     };
 
     if (!connection) return <div className="text-center p-5"><Spinner /> Připojování k aréně...</div>;
+
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const currentUserId = currentUser.id;
 
     return (
         <Container fluid className="h-screen py-4">
@@ -168,20 +179,12 @@ export default function BalanceGame() {
                     />
                 </Col>
             </Row>
-            {gameOver && (
-                <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-50">
-                    <div className="bg-white p-8 rounded-2xl shadow-2xl text-center border-4 border-red-500">
-                        <h2 className="text-4xl font-black text-red-500 mb-2">KONEC HRY!</h2>
-                        <p className="text-gray-600">Čas vypršel nebo kulička vypadla z arény.</p>
-                        <button
-                            onClick={() => window.location.reload()}
-                            className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-full font-bold"
-                        >
-                            Hrát znovu
-                        </button>
-                    </div>
-                </div>
-            )}
+            <GameOverModal
+                show={gameOver}
+                result={gameResult}
+                currentPlayerId={currentUserId}
+                onRetry={() => window.location.href = '/games/balance'}
+            />
         </Container>
     );
 }

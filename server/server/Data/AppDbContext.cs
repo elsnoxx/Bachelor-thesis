@@ -60,6 +60,10 @@ namespace server.Data
                 .HasForeignKey(b => b.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            modelBuilder.Entity<Statistic>()
+                .Property(s => s.Id)
+                .HasDefaultValueSql("gen_random_uuid()");
+
             // Relace: User → Statistic
             modelBuilder.Entity<Statistic>()
                 .HasOne(s => s.User)

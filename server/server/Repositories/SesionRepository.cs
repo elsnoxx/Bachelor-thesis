@@ -8,10 +8,28 @@ namespace server.Repositories
     public class SesionRepository : ISesionRepository
     {
         private readonly AppDbContext _context;
+        private readonly ILogger<SesionRepository> _logger;
 
-        public SesionRepository(AppDbContext context)
+        public SesionRepository(AppDbContext context, ILogger<SesionRepository> logger)
         {
             _context = context;
+            _logger = logger;
+        }
+
+        public async Task<Guid> GetSesionIdByEmailAndRoomAsync(Guid userId, Guid roomId)
+        {
+            // Použijeme FirstOrDefaultAsync(), aby await mohl fungovat
+            var sessionId = _context.Sessions
+                .Where(s => s.UserId == userId && s.GameRoomId == roomId && s.IsActive)
+                .Select(s => s.Id)
+                .FirstOrDefault();
+
+            if (sessionId == null)
+            {
+                _logger.LogWarning("Session for user {UserId} in room {RoomId} was not found in database.", userId, roomId);
+            }
+
+            return sessionId;
         }
 
         public async Task<bool> AddUserToSesion(Session session)

@@ -11,5 +11,6 @@ namespace server.Services.DbServices.Interfaces
         Task<IEnumerable<Statistic>> GetUserStatsAsync(string userEmail);
         Task<IEnumerable<BioFeedback>> GetUserBiofeedbackAsync(string userEmail);
         Task<DetailBioFeedbackData> GetBioSummaryAsync(string userEmail, string sesionId);
+        Task<BioSummary?> GetSessionSummaryAsync(string email, Guid roomId);
     }
 }

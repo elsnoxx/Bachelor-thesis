@@ -1,9 +1,12 @@
-﻿using Serilog; // Ujisti se, že máš tento using
+﻿using Microsoft.Extensions.DependencyInjection;
+using Serilog; // Ujisti se, že máš tento using
 using server.Models.DB;
+using server.Models.DTO;
 using server.Models.Games;
+using server.Repositories.Interfaces;
 using server.Services.DbServices.Interfaces;
+using server.Services.Utils;
 using System.Collections.Concurrent;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace server.Services.GameServices
 {
@@ -11,10 +14,12 @@ namespace server.Services.GameServices
     {
         private readonly ConcurrentDictionary<string, BalanceGame> _activeGames = new();
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly DbWriteQueue _dbQueue;
 
-        public BallanceGameService(IServiceScopeFactory scopeFactory)
+        public BallanceGameService(IServiceScopeFactory scopeFactory, DbWriteQueue dbQueue)
         {
             _scopeFactory = scopeFactory;
+            _dbQueue = dbQueue;
         }
 
         private BalanceGame GetOrCreateGame(string roomId)
@@ -38,12 +43,13 @@ namespace server.Services.GameServices
                 game.StartTime = DateTime.UtcNow;
                 Log.Information("[GAME START] Room: {RoomId}, Players: {P1} vs {P2}, Time: {Time}",
                     roomId, game.LeftPlayerId, game.RightPlayerId, game.StartTime);
+                _ = UpdateRoomStatusToInProgress(roomId);
             }
 
             if (game.StartTime != null)
             {
                 game.AddValue(playerId, value);
-                _ = SaveBioFeedbackAsync(playerId, roomId, value);
+                SaveBioFeedbackAsync(playerId, roomId, value);
             }
 
             int remaining = game.GetRemainingTime();
@@ -56,26 +62,52 @@ namespace server.Services.GameServices
             }
 
             // Kontrola KONCE hry
+            // Kontrola KONCE hry v rámci metody ProcessInput
             if (game.IsGameOver)
             {
                 if (!game.WasSaved)
                 {
-                    game.WasSaved = true; // Okamžitě zamkneme, aby další vlákno neukládalo
+                    game.WasSaved = true;
+                    SaveFinalGameStats(game);
+                }
 
-                    // Spustíme uložení na pozadí (nechceme blokovat websocket)
-                    _ = SaveFinalGameStats(game);
+                bool isWin = false;
+                string reason = "";
+                double ballPos = game.GetBallPosition();
+
+                if (ballPos <= 0)
+                {
+                    isWin = false;
+                    reason = "Prohra: Kulička vypadla na levé straně.";
+                }
+                else if (ballPos >= 100)
+                {
+                    isWin = false;
+                    reason = "Prohra: Kulička vypadla na pravé straně.";
+                }
+                else if (remaining <= 0)
+                {
+                    isWin = true;
+                    reason = "Vítězství! Dokázali jste spolupracovat a udržet balanc až do konce.";
+                }
+                else
+                {
+                    isWin = false;
+                    reason = "Hra byla ukončena.";
                 }
 
                 return new
                 {
                     roomId = game.RoomId,
-                    ballPosition = game.GetBallPosition(),
+                    ballPosition = ballPos,
                     leftValue = game.LeftValue,
                     rightValue = game.RightValue,
                     leftPlayerId = game.LeftPlayerId,
                     rightPlayerId = game.RightPlayerId,
                     isGameOver = true,
-                    remainingTime = 0
+                    remainingTime = 0,
+                    isWin = isWin,
+                    endReason = reason
                 };
             }
 
@@ -92,50 +124,17 @@ namespace server.Services.GameServices
             };
         }
 
-        private async Task SaveFinalGameStats(BalanceGame game)
+        private void SaveFinalGameStats(BalanceGame game)
         {
-            try
-            {
-                Log.Information("[DB SAVE] Saving stats for room {RoomId}", game.RoomId);
+            Log.Information("[GAME END] Queueing stats for room {RoomId}", game.RoomId);
 
-                var playersToSave = new[] {
-            new { Email = game.LeftPlayerId, Side = "Left" },
-            new { Email = game.RightPlayerId, Side = "Right" }
-        };
-
-                using var scope = _scopeFactory.CreateScope();
-                var statisticService = scope.ServiceProvider.GetRequiredService<IStatisticServices>();
-
-                if (!Guid.TryParse(game.RoomId, out Guid roomGuid)) return;
-
-                foreach (var p in playersToSave)
-                {
-                    if (string.IsNullOrEmpty(p.Email)) continue;
-
-                    // 1. Získáme výpočet z BioFeedback tabulky pro tuto hru
-                    var summary = await statisticService.GetSessionSummaryAsync(p.Email, roomGuid);
-
-                    // 2. Naplníme model statistiky
-                    var stats = new Statistic
-                    {
-                        GameType = "ballance",
-                        LastPlayed = DateTime.UtcNow,
-                        TotalSessions = 1,
-                        // Tady mapujeme vypočítaná data
-                        AverageGsr = summary?.Avg ?? 0,
-                        // Pokud chceš Min/Max, přidej si je do modelu Statistic, 
-                        // nebo použij BestScore pro Max (pokud je to žádoucí)
-                        BestScore = summary?.Max ?? 0
-                    };
-
-                    await statisticService.AddStatisticByEmailAsync(p.Email, stats);
-                    Log.Debug("[DB SAVE] Stats saved for {Email}. Avg GSR: {Avg}", p.Email, stats.AverageGsr);
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "[DB SAVE ERROR] Failed to save game stats for room {RoomId}", game.RoomId);
-            }
+            // Žádný await, žádný try-catch (ten je ve workeru), žádný IServiceScope
+            _dbQueue.QueueGameResultAsync(new GameResultContext(
+                game.RoomId,
+                game.LeftPlayerId,
+                game.RightPlayerId,
+                "ballance"
+            ));
         }
 
         public void RemoveRoom(string roomId)
@@ -146,24 +145,36 @@ namespace server.Services.GameServices
             }
         }
 
-        private async Task SaveBioFeedbackAsync(string email, string roomId, double value)
+        private void SaveBioFeedbackAsync(string email, string roomId, double value)
+        {
+            if (Guid.TryParse(roomId, out Guid roomGuid))
+            {
+                // Žádný await, žádný scope. Jen hodíme do fronty.
+                _dbQueue.QueueBioFeedbackAsync(new BioFeedbackMessage(email, roomGuid, (float)value));
+            }
+        }
+
+        private async Task UpdateRoomStatusToInProgress(string roomId)
         {
             try
             {
-                // Musíme vytvořit scope, protože běžíme v singletonu na pozadí
                 using var scope = _scopeFactory.CreateScope();
-                var statisticService = scope.ServiceProvider.GetRequiredService<IStatisticServices>();
+                var roomRepo = scope.ServiceProvider.GetRequiredService<IGameRoomRepository>();
 
                 if (Guid.TryParse(roomId, out Guid roomGuid))
                 {
-                    // Voláme tvou metodu v servise, která si dohledá Guid uživatele podle emailu
-                    await statisticService.AddBioFeedbackByEmailAsync(email, roomGuid, (float)value);
+                    var gameRoom = await roomRepo.GameRoomById(roomGuid);
+                    if (gameRoom != null && gameRoom.Status != "InProgress")
+                    {
+                        gameRoom.Status = "InProgress";
+                        await roomRepo.UpdateGameRoomAsync(gameRoom);
+                        Log.Information("[DB UPDATE] Room {RoomId} switched to InProgress", roomId);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                // Logujeme jen občas nebo vůbec, aby se nezahltil log při chybě v každém ticku
-                Log.Error(ex, "[GSR SAVE ERROR] Failed for user {Email}", email);
+                Log.Error(ex, "[DB UPDATE ERROR] Failed to set InProgress for room {RoomId}", roomId);
             }
         }
 

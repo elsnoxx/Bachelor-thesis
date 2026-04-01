@@ -38,10 +38,10 @@ export default function BalanceArena({
   return (
     <div className="w-full flex flex-col items-center gap-4">
       {/* Indikátory stran */}
-      <div className="w-full max-w-3xl flex justify-between px-4 font-black text-gray-300 text-2xl">
-        <span className={norm < 0.3 ? "text-red-500 transition-colors" : ""}>L</span>
+      <div className="w-full max-w-3xl flex justify-between px-4 font-medium text-gray-400 text-sm">
+        <span className={norm < 0.3 ? "text-red-500" : ""}>L</span>
         <span className={inTarget ? "text-emerald-500" : ""}>CENTER</span>
-        <span className={norm > 0.7 ? "text-red-500 transition-colors" : ""}>P</span>
+        <span className={norm > 0.7 ? "text-red-500" : ""}>P</span>
       </div>
 
       <div className="w-full max-w-3xl perspective-1000">

@@ -25,6 +25,46 @@ namespace server.Services.DbServices
             _mapper = mapper;
         }
 
+        public async Task FinishGameRoom(Guid gameroomid)
+        {
+            var gameRoom = await _gameRoomRepository.GameRoomById(gameroomid);
+            if (gameRoom == null)
+            {
+                Log.Error("Game Room {RoomId} not found.", gameroomid);
+                return;
+            }
+            gameRoom.Status = "Finished";
+            try
+            {
+                await _gameRoomRepository.UpdateGameRoomAsync(gameRoom);
+                Log.Information("Game room {RoomId} marked as finished", gameroomid);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error updating game room status");
+            }
+        }
+
+        public async Task StartGameRoom(Guid gameroomid)
+        {
+            var gameRoom = await _gameRoomRepository.GameRoomById(gameroomid);
+            if (gameRoom == null)
+            {
+                Log.Error("Game Room {RoomId} not found.", gameroomid);
+                return;
+            }
+            gameRoom.Status = "InProgress";
+            try
+            {
+                await _gameRoomRepository.UpdateGameRoomAsync(gameRoom);
+                Log.Information("Game room {RoomId} marked as in progress", gameroomid);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error updating game room status");
+            }
+        }
+
         public async Task<Result<IEnumerable<GameRoomDTO>>> GetGameRoomsListAsync(string gameType)
         {
             var gameRooms = await _gameRoomRepository.AllGameRoomsAsync(gameType);

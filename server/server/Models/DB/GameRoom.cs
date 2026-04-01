@@ -11,7 +11,7 @@ namespace server.Models.DB
         public string Name { get; set; } = null!;
         public string GameType { get; set; } = null!;
         public int MaxPlayers { get; set; } = 2;
-        public string Status { get; set; } = "waiting";
+        public string Status { get; set; } = "Waiting";
         [MaxLength(255)]
         public string? PasswordHash { get; set; }
         [DataType(DataType.DateTime)]

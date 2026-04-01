@@ -1,7 +1,10 @@
-﻿using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using server.BackgroundWorkers;
 using server.Data;
 using server.Helpers;
 using server.Hubs;
@@ -13,8 +16,6 @@ using server.Services.DbServices.Interfaces;
 using server.Services.GameServices;
 using server.Services.Utils;
 using server.Services.Utils.Interfaces;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
 namespace server
@@ -111,6 +112,8 @@ namespace server
             builder.Services.AddSingleton<LudoGameServices>();
 
             builder.Services.AddScoped<FileHelper>();
+            builder.Services.AddSingleton<DbWriteQueue>();
+            builder.Services.AddHostedService<DbWriterWorker>();
 
 
             // Cors policy

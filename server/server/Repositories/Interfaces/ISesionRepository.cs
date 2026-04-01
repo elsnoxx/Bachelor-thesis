@@ -10,5 +10,7 @@ namespace server.Repositories.Interfaces
         Task<bool> SesionExistsAsync(Guid sessionId);
         Task<IEnumerable<Guid>> GetUsersInGameRoomAsync(Guid gameRoomId);
         Task<bool> RemoveUserFromSesion(Guid userId, Guid gameRoomId);
+        Task<Guid> GetSesionIdByEmailAndRoomAsync(Guid user, Guid roomId);
+
     }
 }

@@ -9,5 +9,6 @@ namespace server.Repositories.Interfaces
         Task<GameRoom> GameRoomById(Guid roomId);
         Task<bool> GameRoomExistsAsync(Guid roomId);
         Task DeleteGameRoomAsync(GameRoom gameRoom);
+        Task UpdateGameRoomAsync(GameRoom gameRoom);
     }
 }

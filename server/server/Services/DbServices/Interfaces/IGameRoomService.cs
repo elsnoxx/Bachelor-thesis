@@ -12,6 +12,9 @@ namespace server.Services.DbServices.Interfaces
 
         Task<Result<bool>> JoinGameRoomAsync(Guid gameRoomId, JoinRoomRequest request);
         Task<Result<bool>> LeaveGameRoomAsync(Guid gameRoomId, LeaveRoomRequest request);
+
+        Task FinishGameRoom(Guid gameroomid);
+        Task StartGameRoom(Guid gameroomid);
     }
 }
 

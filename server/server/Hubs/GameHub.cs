@@ -39,21 +39,20 @@ namespace server.Hubs
             await Clients.Group(roomId).SendAsync("PlayerJoined", Context.ConnectionId);
         }
 
-        // Metoda pro posílání dat specifických pro EnergyBattle
         public async Task SendEnergyData(string roomId, double value)
         {
-            // Získáme ID uživatele z claimů (pokud jsi přihlášen)
-            var userId = Context.User?.Identity?.Name ?? Context.ConnectionId;
+            var userEmail = Context.User?.Identity?.Name;
+            if (string.IsNullOrEmpty(userEmail)) return;
 
-            var packet = new
+            // Voláme HandleMove s typem "energybattle"
+            // To zajistí, že se zavolá ProcessInput v EnergyBattleGameServices
+            var gameState = _gameManager.HandleMove("energybattle", roomId, userEmail, value);
+
+            if (gameState != null)
             {
-                playerId = userId,
-                value = value,
-                timestamp = DateTime.UtcNow
-            };
-
-            // Pošle data VŠEM v dané místnosti (včetně odesílatele)
-            await Clients.Group(roomId).SendAsync("ReceiveEnergyData", packet);
+                // Posíláme vypočítaný stav (me, opponent, health, energy)
+                await Clients.Group(roomId).SendAsync("ReceiveGameState", gameState);
+            }
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)
@@ -85,10 +84,28 @@ namespace server.Hubs
             }
         }
 
+        public async Task FireCannon(string roomId)
+        {
+            var userEmail = Context.User?.Identity?.Name;
+            if (string.IsNullOrEmpty(userEmail)) return;
+
+            var energyService = _gameManager.GetEnergyService();
+            var gameState = energyService.Fire(roomId, userEmail);
+
+            if (gameState != null)
+            {
+                await Clients.Group(roomId).SendAsync("ReceiveGameState", gameState);
+
+                // Pokud hra skončila, pošleme do fronty pro DbWriterWorker
+                // _dbWriteQueue.PushResult(...)
+            }
+        }
+
         public async Task LudoRollDice(string roomId)
         {
             var userEmail = Context.User?.Identity?.Name;
-            // _gameManager by měl mít metodu, která vrátí LudoService
+            if (string.IsNullOrEmpty(userEmail)) return; // Ochrana proti null
+
             var state = _gameManager.LudoRollDice(roomId, userEmail);
             if (state != null)
             {

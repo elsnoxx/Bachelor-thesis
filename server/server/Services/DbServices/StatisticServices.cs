@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 using server.Models.DB;
 using server.Models.DTO;
 using server.Repositories.Interfaces;
@@ -13,17 +14,22 @@ namespace server.Services.DbServices
         private readonly IStatisticRepository _statisticRepo;
         private readonly IUserRepository _userRepository;
         private readonly IBiofeedbackRepository _bioRepo;
+        private readonly ISesionRepository _sesionRepo;
+        private readonly ILogger<StatisticServices> _logger;
 
-        public StatisticServices(IStatisticRepository statisticRepo, IBiofeedbackRepository bioRepo, IUserRepository userRepository)
+        public StatisticServices(IStatisticRepository statisticRepo, IBiofeedbackRepository bioRepo, IUserRepository userRepository, ILogger<StatisticServices> logger, ISesionRepository sesionRepository)
         {
             _statisticRepo = statisticRepo;
             _bioRepo = bioRepo;
             _userRepository = userRepository;
+            _logger = logger;
+            _sesionRepo = sesionRepository;
         }
 
         public async Task AddStatisticByEmailAsync(string email, Statistic statistic)
         {
             var user = await _userRepository.GetByEmailAsync(email);
+            _logger.LogInformation("Adding statistic for user {Email} with game type {GameType}, user id is {userId}", email, statistic.GameType, user.Id);
             if (user != null)
             {
                 var stats = new Statistic
@@ -33,9 +39,10 @@ namespace server.Services.DbServices
                     AverageGsr = statistic.AverageGsr,
                     BestScore = statistic.BestScore,
                     TotalSessions = statistic.TotalSessions,
-                    LastPlayed = statistic.LastPlayed
+                    LastPlayed = statistic.LastPlayed,
+                    SessionId = statistic.SessionId
                 };
-                await _statisticRepo.AddAsync(statistic);
+                await _statisticRepo.AddAsync(stats);
             }
         }
 
@@ -62,14 +69,13 @@ namespace server.Services.DbServices
 
         public async Task AddBioFeedbackByEmailAsync(string email, Guid roomGuid, float value)
         {
-            // Najdeme uživatele podle emailu
             var user = await _userRepository.GetByEmailAsync(email);
 
             if (user != null)
             {
                 var bio = new BioFeedback
                 {
-                    UserId = user.Id, // Tady získáme to správné Guid
+                    UserId = user.Id,
                     GameRoomId = roomGuid,
                     GsrValue = value,
                     Timestamp = DateTime.UtcNow
@@ -90,26 +96,39 @@ namespace server.Services.DbServices
             return await _bioRepo.GetStatistic(user.Id);
         }
 
-        public async Task<DetailBioFeedbackData> GetBioSummaryAsync(string userEmail, string sesionId)
+        public async Task<DetailBioFeedbackData> GetBioSummaryAsync(string userEmail, string sessionIdString)
         {
-            var user = await _userRepository.GetByEmailAsync(userEmail);
+            // 1. Validace vstupu
+            if (!Guid.TryParse(sessionIdString, out Guid sessionGuid))
+                return new DetailBioFeedbackData();
 
-            // 1. Převedeme string na Guid
-            if (!Guid.TryParse(sesionId, out Guid sessionGuid))
+            var user = await _userRepository.GetByEmailAsync(userEmail);
+            if (user == null) return new DetailBioFeedbackData();
+
+            // 2. Najdeme session – Zásadní krok!
+            // Musíme vědět, kdy hráč hrál (StartTime) a v jaké místnosti (GameRoomId)
+            var stats = await _statisticRepo.GetStatisticById(sessionGuid);
+            
+            var session = await _sesionRepo.GetSesionByIdAsync(stats.SessionId);
+            if (session == null) return new DetailBioFeedbackData();
+
+            // 3. Načteme VŠECHNA biofeedback data uživatele
+            var allUserBioData = await _bioRepo.GetStatistic(user.Id);
+
+            // 4. FILTRACE - Tady se to láme:
+            var rawData = allUserBioData
+                .Where(d => d.GameRoomId == session.GameRoomId) // Musí odpovídat místnosti '9ab44...'
+                .Where(d => d.Timestamp >= session.StartTime)   // Musí to být od začátku session
+                .OrderBy(d => d.Timestamp)
+                .ToList();
+
+            if (!rawData.Any())
             {
-                // Pokud string není validní Guid, vrátíme prázdná data (nebo vyhodíme chybu)
+                // LOG pro debug:
+                _logger.LogWarning("Žádná data pro User: {UserId} v Room: {RoomId} od {Start}",
+                    user.Id, session.GameRoomId, session.StartTime);
                 return new DetailBioFeedbackData();
             }
-
-            var allData = await _bioRepo.GetStatistic(user.Id);
-
-            // 2. Filtrujeme pomocí Guidu
-            var rawData = allData
-                            .Where(d => d.GameRoomId == sessionGuid)
-                            .OrderBy(d => d.Timestamp)
-                            .ToList();
-
-            if (!rawData.Any()) return new DetailBioFeedbackData();
 
             // 1. Základní statistiky
             var values = rawData.Select(d => d.GsrValue).ToList();
@@ -148,7 +167,7 @@ namespace server.Services.DbServices
 
             return new DetailBioFeedbackData
             {
-                AverageGsr = Math.Round(avg, 2),
+                AverageGsr = (double)stats.AverageGsr,
                 MaxGsr = values.Max(),
                 MinGsr = values.Min(),
                 PeakCount = peaks,
