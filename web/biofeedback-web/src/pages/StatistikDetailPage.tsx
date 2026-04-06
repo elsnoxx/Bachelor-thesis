@@ -102,20 +102,22 @@ export default function StatistikDetailPage() {
       </ResponsiveContainer>
 
       <h4 className="mt-3">Raw / chart points</h4>
-      <Table striped bordered hover responsive>
-        <thead>
-          <tr><th>Timestamp</th><th>GSR</th><th>Peak</th></tr>
-        </thead>
-        <tbody>
-          {summary.chartData.map((p, i) => (
-            <tr key={i}>
-              <td>{new Date(p.timestamp).toLocaleString()}</td>
-              <td>{p.value}</td>
-              <td>{p.isPeak ? "✓" : ""}</td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
+      <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+        <Table striped bordered hover responsive>
+          <thead>
+            <tr><th>Timestamp</th><th>GSR</th><th>Peak</th></tr>
+          </thead>
+          <tbody>
+            {summary.chartData.map((p, i) => (
+              <tr key={i}>
+                <td>{new Date(p.timestamp).toLocaleString()}</td>
+                <td>{p.value}</td>
+                <td>{p.isPeak ? "✓" : ""}</td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </div>
     </div>
   );
 }
