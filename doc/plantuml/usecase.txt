@@ -1,0 +1,41 @@
+@startuml
+left to right direction
+skinparam shadowing false
+skinparam monochrome true
+skinparam packageStyle rectangle
+
+actor "Hráč" as User
+
+rectangle "Biofeedback Multiplayer Platforma" {
+    
+    rectangle "Správa účtu" {
+        (Registrace a přihlášení) as (Auth)
+        (Správa profilu a změna hesla) as (Profile)
+        (Prohlížení historie výsledků) as (Stats)
+    }
+
+    rectangle "Lobby a místnosti" {
+        (Vytvoření nové herní místnosti) as (CreateRoom)
+        (Výběr hry a připojení do místnosti) as (JoinRoom)
+    }
+    
+    rectangle "Herní rozhraní" {
+        (Párování GSR senzoru přes BLE) as (PairBLE)
+        (Sledování herního stavu v reálném čase) as (WatchState)
+        (Ovládání hry) as (PlayGame)
+        (Provedení herní akce - výstřel/tah) as (Fire)
+    }
+
+}
+
+User --> (Auth)
+User --> (Profile)
+User --> (Stats)
+User --> (CreateRoom)
+User --> (JoinRoom)
+User --> (PairBLE)
+User --> (WatchState)
+User --> (PlayGame)
+User --> (Fire)
+
+@enduml

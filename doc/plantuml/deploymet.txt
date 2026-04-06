@@ -1,0 +1,44 @@
+@startuml
+skinparam componentStyle uml2
+skinparam databaseBackgroundColor #LightBlue
+skinparam nodeBackgroundColor #WhiteSmoke
+
+title Diagram nasazení aplikace (Docker Compose)
+
+node "Server / Docker Host" {
+    
+    node "Frontend Container" <<service: frontend>> as FE_CONT {
+        component "Nginx Web Server" as NGINX
+        port "80" as P80
+        port "443" as P443
+    }
+
+    node "Backend Container" <<service: api>> as API_CONT {
+        component "ASP.NET Core API" as DOTNET
+        port "5000" as P5000
+    }
+
+    node "Database Container" <<service: postgres>> as DB_CONT {
+        database "PostgreSQL 16" as PSQL
+        port "5432" as P5432
+    }
+
+    storage "Volume: postgres_data" as VOL_DB
+}
+
+cloud "Internet" as NET
+
+' Propojení portů a služeb
+NET --> P80 : HTTP
+NET --> P443 : HTTPS
+
+P80 -down-> NGINX
+P443 -down-> NGINX
+
+NGINX -(0- DOTNET : "REST API / JSON"
+DOTNET --(0-- PSQL : "TCP 5432 (Internal)"
+
+' Vazby na volumes
+PSQL ..> VOL_DB : "Data persistence"
+
+@enduml

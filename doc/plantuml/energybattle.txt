@@ -1,0 +1,70 @@
+@startuml
+skinparam style strictuml
+skinparam sequenceMessageAlign center
+
+actor "Hráč" as Player
+participant "React Frontend\n(EnergyBattleGame)" as FE
+participant "BLE Service\n(Senzor)" as BLE
+participant "SignalR Hub\n(GameHub)" as Hub
+participant "Backend Service\n(EnergyBattleService)" as Backend
+database "PostgreSQL\n(via Queue)" as DB
+
+== Inicializace a připojení ==
+
+Player -> FE : Otevře místnost (roomId)
+FE -> FE : getValidToken() (JWT check)
+FE -> Hub : Connect (with Token)
+Hub -> Hub : Authorize User
+FE -> Hub : JoinRoom(roomId)
+
+== Aktivace Biofeedbacku ==
+
+Player -> FE : Zahájí párování senzoru
+FE -> BLE : Vyhledat zařízení (Web Bluetooth API)
+BLE -> Player : Dialog pro výběr zařízení
+Player --> BLE : Potvrzení výběru
+BLE -->> FE : Zařízení připojeno (isConnected = true)
+
+== Herní smyčka (Real-time data) ==
+
+note over FE, BLE : Smyčka běží pouze při isConnected == true
+
+loop Každou 1 sekundu
+    BLE -> FE : Naměřená hodnota GSR
+    
+    FE -> Hub : SendEnergyData(roomId, gsrValue)
+    Hub -> Backend : ProcessInput(roomId, email, value)
+    
+    Backend -> DB : QueueBioFeedbackAsync(value)
+    
+    note over Backend : Výpočet nabíjení energie\n(rozdíl od cíle < tolerance)
+    
+    Backend --> Hub : Vrať aktuální stav hry (ReceiveGameState)
+    Hub -> FE : ReceiveGameState(data)
+    FE -> Player : Aktualizuj UI (Energy bar, Health, Target)
+end
+
+== Akce: Výstřel (Fire) ==
+
+Player -> FE : Klikne na tlačítko "Vystřelit"
+note right of FE : Povoleno v UI pouze\npokud Energy >= 100
+
+FE -> Hub : FireCannon(roomId)
+Hub -> Backend : Fire(roomId, shooterEmail)
+
+alt Úspěšný zásah (Server-side validation)
+    Backend -> Backend : Reset Energy (0)
+    Backend -> Backend : Opponent Health -= 20
+    Backend -> Backend : Vygeneruj nový cílový limit
+    
+    alt Zdraví soupeře <= 0
+        Backend -> Backend : IsFinished = true
+        Backend -> DB : SaveFinalGameStats()
+    end
+    
+    Backend --> Hub : Nový stav (ReceiveGameState)
+    Hub -> FE : ReceiveGameState(data)
+    FE -> Player : Zobraz animaci výstřelu / Game Over
+end
+
+@enduml

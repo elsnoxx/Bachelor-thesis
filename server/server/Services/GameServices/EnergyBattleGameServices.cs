@@ -124,7 +124,7 @@ namespace server.Services.GameServices
             {
                 shooter.Energy = 0;
                 shooter.TargetBioValue = GenerateNewTarget();
-                opponent.Health -= 100;
+                opponent.Health -= 20;
 
                 if (opponent.Health <= 0)
                 {

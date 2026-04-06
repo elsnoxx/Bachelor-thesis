@@ -1,0 +1,66 @@
+@startuml
+skinparam style strictuml
+skinparam sequenceMessageAlign center
+
+actor "Hráč L + Hráč P" as Players
+participant "React Frontend\n(BalanceGame)" as FE
+participant "BLE Service\n(Senzor)" as BLE
+participant "SignalR Hub\n(GameHub)" as Hub
+participant "Backend Service\n(BallanceGameService)" as Backend
+participant "Game Model\n(BalanceGame)" as Model
+database "PostgreSQL\n(via Queue)" as DB
+
+== Inicializace a připojení ==
+
+Players -> FE : Otevře místnost (roomId)
+FE -> FE : getValidToken() (JWT check)
+FE -> Hub : Connect (with Token)
+Hub -> Hub : Authorize User
+FE -> Hub : JoinRoom(roomId)
+
+== Aktivace Biofeedbacku ==
+
+Players -> FE : Zahájí párování senzoru
+FE -> BLE : Vyhledat zařízení (Web Bluetooth API)
+BLE -> Players : Dialog pro výběr zařízení
+Players --> BLE : Potvrzení výběru
+BLE -->> FE : Zařízení připojeno (isConnected = true)
+
+== Herní smyčka (Kooperativní balancování) ==
+
+loop Každou 1 sekundu (pouze pokud isConnected)
+    BLE -> FE : Aktuální GSR hodnota
+    FE -> Hub : SendGameData(roomId, "ballance", value)
+    Hub -> Backend : HandleMove("ballance", roomId, email, value)
+    
+    Backend -> Model : AddValue(playerId, value)
+    note right of Model : Ukládá do historie (Queue)\nposledních 30 hodnot
+    
+    Backend -> DB : QueueBioFeedbackAsync(value)
+    
+    Backend -> Model : GetBallPosition()
+    note right of Model : (Průměr L + Průměr P) / 10
+    
+    alt Pokud se připojil druhý hráč (Start hry)
+        Backend -> Model : GenerateLimits()
+        Backend -> DB : UpdateRoomStatus("InProgress")
+    end
+
+    Backend -> Model : GetRemainingTime()
+    
+    Backend --> Hub : Vrať BallanceGameState
+    Hub -> FE : ReceiveGameState(state)
+    FE -> Players : Aktualizace UI (Pozice kuličky, Limity, Čas)
+end
+
+== Konec hry (Vítězství / Prohra) ==
+
+alt Kulička mimo limit (0 nebo 100) NEBO Čas vypršel (0s)
+    Backend -> Model : IsGameOver = true
+    Backend -> DB : QueueGameResultAsync(stats)
+    Backend --> Hub : ReceiveGameState (isGameOver: true)
+    Hub -> FE : ReceiveGameState(state)
+    FE -> Players : Zobraz GameOverModal (Vítězství/Prohra)
+end
+
+@enduml
