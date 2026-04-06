@@ -24,7 +24,15 @@ export const BattleControls = ({ target, targetMin, targetMax, nextChangeIn, cur
       </div>
 
       {/* Horizontální bar */}
-      <div className="position-relative mb-4" style={{ height: '20px', background: '#444', borderRadius: '10px' }}>
+      <div
+        className="position-relative mb-4"
+        style={{
+          height: '20px',
+          background: '#444',
+          borderRadius: '10px',
+          overflow: 'hidden' // -> ořízne vše, co přesahuje
+        }}
+      >
         {/* Cílová zóna */}
         <div
           className="position-absolute bg-success"
@@ -42,8 +50,9 @@ export const BattleControls = ({ target, targetMin, targetMax, nextChangeIn, cur
           style={{
             left: `${currentPos}%`,
             width: '4px',
-            height: '140%',
-            top: '-20%',
+            height: '100%',   // plná výška baru
+            top: '0',         // zarovnat dovnitř
+            transform: 'translateX(-50%)', // centrovat šířku ukazatele na pozici
             transition: 'left 0.1s linear'
           }}
         />

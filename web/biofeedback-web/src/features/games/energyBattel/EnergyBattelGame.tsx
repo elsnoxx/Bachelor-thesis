@@ -7,7 +7,7 @@ import { useBle } from "../../../services/BleProvider";
 import { PlayerStatus } from "./components/PlayerStatus";
 import { BattleControls } from "./components/BattleControls";
 import type { GameParticipant, EnergyBattleState } from "./types";
-import GameOverModal from "../general/GameOverModal";
+import { GameOverModal } from "./components/GameOverModal";
 
 
 export default function EnergyBattleGame() {
@@ -18,6 +18,10 @@ export default function EnergyBattleGame() {
 
   const [simulatedGsr, setSimulatedGsr] = useState<number>(0);
   const effectiveGsr = isConnected ? (gsrValue || 0) : simulatedGsr;
+  const [myEmail] = useState(() => {
+    const userJson = localStorage.getItem('user');
+    return userJson ? JSON.parse(userJson).email : null;
+  });
 
   // Pomocný stav pro zastavení simulace
   const isGameOver = gameState?.me.health === 0 || (gameState?.opponent?.health === 0);
@@ -71,7 +75,7 @@ export default function EnergyBattleGame() {
     conn.on("ReceiveGameState", (data: any) => {
       const myEmail = getUserEmail();
       const players = data.players as any[];
-      const meData = players.find((p) => p.email === myEmail);
+      const meData = players.find((p) => p.email.toLowerCase() === myEmail?.toLowerCase());
       const opponentData = players.find((p) => p.email !== myEmail);
 
       if (meData) {
@@ -210,7 +214,7 @@ export default function EnergyBattleGame() {
         <GameOverModal
           show={gameState.isFinished}
           winnerEmail={gameState.winner}
-          myEmail={getUserEmail()}
+          myEmail={myEmail}
           onClose={() => { }}
         />
 

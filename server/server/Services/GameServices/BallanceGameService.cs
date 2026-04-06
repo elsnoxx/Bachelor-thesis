@@ -41,6 +41,7 @@ namespace server.Services.GameServices
             if (game.StartTime == null && !string.IsNullOrEmpty(game.LeftPlayerId) && !string.IsNullOrEmpty(game.RightPlayerId))
             {
                 game.StartTime = DateTime.UtcNow;
+                game.GenerateLimits();
                 Log.Information("[GAME START] Room: {RoomId}, Players: {P1} vs {P2}, Time: {Time}",
                     roomId, game.LeftPlayerId, game.RightPlayerId, game.StartTime);
                 _ = UpdateRoomStatusToInProgress(roomId);
@@ -75,12 +76,12 @@ namespace server.Services.GameServices
                 string reason = "";
                 double ballPos = game.GetBallPosition();
 
-                if (ballPos <= 0)
+                if (ballPos <= game.TargetMin)
                 {
                     isWin = false;
                     reason = "Prohra: Kulička vypadla na levé straně.";
                 }
-                else if (ballPos >= 100)
+                else if (ballPos >= game.TargetMax)
                 {
                     isWin = false;
                     reason = "Prohra: Kulička vypadla na pravé straně.";
@@ -104,6 +105,10 @@ namespace server.Services.GameServices
                     rightValue = game.RightValue,
                     leftPlayerId = game.LeftPlayerId,
                     rightPlayerId = game.RightPlayerId,
+                    targetMin = game.TargetMin,
+                    targetMax = game.TargetMax,
+                    targetMinPlayer = game.TargetMinPlayer,
+                    targetMaxPlayer = game.TargetMaxPlayer,
                     isGameOver = true,
                     remainingTime = 0,
                     isWin = isWin,
@@ -115,6 +120,10 @@ namespace server.Services.GameServices
             {
                 roomId = game.RoomId,
                 ballPosition = game.GetBallPosition(),
+                targetMin = game.TargetMin,
+                targetMax = game.TargetMax,
+                targetMinPlayer = game.TargetMinPlayer,
+                targetMaxPlayer = game.TargetMaxPlayer,
                 leftValue = game.LeftValue,
                 rightValue = game.RightValue,
                 leftPlayerId = game.LeftPlayerId,

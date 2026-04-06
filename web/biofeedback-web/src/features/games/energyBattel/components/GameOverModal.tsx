@@ -9,7 +9,8 @@ interface GameOverModalProps {
 }
 
 export const GameOverModal = ({ show, winnerEmail, myEmail, onClose }: GameOverModalProps) => {
-  const isIWinner = winnerEmail === myEmail;
+  // Převedeme na malé písmena pro jistotu při porovnávání
+  const isIWinner = winnerEmail?.toLowerCase() === myEmail?.toLowerCase();
 
   return (
     <Modal show={show} centered backdrop="static" keyboard={false}>
@@ -18,14 +19,17 @@ export const GameOverModal = ({ show, winnerEmail, myEmail, onClose }: GameOverM
       </Modal.Header>
       <Modal.Body className="text-center py-4">
         <div className="display-1 mb-3">{isIWinner ? "🏆" : "💀"}</div>
-        <h4>{isIWinner ? "Skvělá práce!" : "Zkus to znovu!"}</h4>
+        <h4 className={isIWinner ? "text-success" : "text-danger"}>
+            {isIWinner ? "Skvělá práce!" : "Tvůj soupeř byl rychlejší..."}
+        </h4>
         <p className="text-muted">
-          {winnerEmail ? `Vítěz: ${winnerEmail}` : "Hra skončila remízou."}
+          {winnerEmail ? `Vítěz: ${winnerEmail}` : "Hra skončila."}
         </p>
       </Modal.Body>
-      <Modal.Footer>
-        <Button variant="primary" onClick={() => window.location.href = "/energybattle"}>
-          Zpět do menu
+      <Modal.Footer className="justify-content-center">
+        {/* OPRAVA CESTY: Pokud se chceš vrátit na výběr her, zkontroluj si routu (pravděpodobně /games) */}
+        <Button variant="secondary" size="lg" onClick={() => window.location.href = "/games/energybattle"}>
+          Zpět do menu her
         </Button>
       </Modal.Footer>
     </Modal>

@@ -9,7 +9,10 @@ namespace server.Models.Games
         public bool IsFinished { get; set; }
         public string? WinnerEmail { get; set; }
         public DateTime? StartTime { get; set; }
-        
+
+        public string? LeftPlayerId => Players.Keys.FirstOrDefault();
+        public string? RightPlayerId => Players.Keys.Skip(1).FirstOrDefault();
+
 
         public class EnergyBattlePlayer
         {

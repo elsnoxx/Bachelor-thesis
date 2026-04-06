@@ -1,6 +1,8 @@
 ﻿using Serilog;
+using server.Models.DTO;
 using server.Models.Games;
 using server.Repositories.Interfaces;
+using server.Services.Utils;
 using System.Collections.Concurrent;
 
 namespace server.Services.GameServices
@@ -10,10 +12,12 @@ namespace server.Services.GameServices
         private readonly ConcurrentDictionary<string, EnergyBattleGame> _activeGames = new();
         private readonly Random _random = new();
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly DbWriteQueue _dbQueue;
 
-        public EnergyBattleGameServices(IServiceScopeFactory scopeFactory)
+        public EnergyBattleGameServices(IServiceScopeFactory scopeFactory, DbWriteQueue dbQueue)
         {
             _scopeFactory = scopeFactory;
+            _dbQueue = dbQueue;
         }
 
         private EnergyBattleGame GetOrCreateGame(string roomId)
@@ -28,6 +32,8 @@ namespace server.Services.GameServices
         {
             var game = GetOrCreateGame(roomId);
             double toleranceRange = 10.0;
+
+            SaveBioFeedbackAsync(playerEmail, roomId, value);
 
             // 1. Registrace hráče (zůstává stejná)
             if (!game.Players.ContainsKey(playerEmail))
@@ -100,7 +106,10 @@ namespace server.Services.GameServices
                         : 30
                 }).ToList(),
                 isFinished = game.IsFinished,
-                winner = game.WinnerEmail
+                winner = game.WinnerEmail,
+                endMessage = game.IsFinished
+                ? (game.WinnerEmail == playerEmail ? "Vítězství! Zničil jsi soupeře." : "Porážka! Tvoje základna byla zničena.")
+                : null
             };
         }
 
@@ -115,17 +124,26 @@ namespace server.Services.GameServices
             {
                 shooter.Energy = 0;
                 shooter.TargetBioValue = GenerateNewTarget();
-                opponent.Health -= 20;
+                opponent.Health -= 100;
 
                 if (opponent.Health <= 0)
                 {
                     opponent.Health = 0;
                     game.IsFinished = true;
                     game.WinnerEmail = shooterEmail;
+
+                    // --- NOVÉ: Logika ukončení ---
+                    SaveFinalGameStats(game); // Uloží výsledek zápasu do fronty
+                    Log.Information("[ENERGY BATTLE] Game Finished in room {RoomId}. Winner: {Winner}", roomId, shooterEmail);
                 }
             }
 
-            return new { roomId = game.RoomId, isFinished = game.IsFinished, winner = game.WinnerEmail };
+            return new
+            {
+                roomId = game.RoomId,
+                isFinished = game.IsFinished,
+                winner = game.WinnerEmail
+            };
         }
 
         private async Task UpdateRoomStatusToInProgress(string roomId)
@@ -157,6 +175,30 @@ namespace server.Services.GameServices
             return _activeGames.Values
                 .SelectMany(g => g.Players)
                 .ToDictionary(p => p.Key, p => p.Value.Energy);
+        }
+
+        private void SaveBioFeedbackAsync(string email, string roomId, double value)
+        {
+            // Používáme TryParse, aby aplikace nespadla, pokud roomId není validní GUID
+            if (Guid.TryParse(roomId, out Guid roomGuid))
+            {
+                // Jen hodíme do fronty - o zbytek se stará BackgroundService (Worker)
+                _dbQueue.QueueBioFeedbackAsync(new BioFeedbackMessage(email, roomGuid, (float)value));
+            }
+        }
+
+        private void SaveFinalGameStats(EnergyBattleGame game)
+        {
+            Log.Information("[GAME END] Queueing stats for room {RoomId}", game.RoomId);
+
+            var context = new GameResultContext(
+                game.RoomId,
+                game.LeftPlayerId,
+                game.RightPlayerId,
+                "energybattle"
+            );
+
+            _dbQueue.QueueGameResultAsync(context);
         }
     }
 }

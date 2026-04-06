@@ -18,6 +18,10 @@ interface BallanceGameState {
     remainingTime: number;
     isWin: boolean;
     endReason: string | null;
+    targetMin: number;
+    targetMax: number;
+    targetMinPlayer: number;
+    targetMaxPlayer: number;
 }
 
 export default function BalanceGame() {
@@ -34,6 +38,8 @@ export default function BalanceGame() {
     const [leftPlayer, setLeftPlayer] = useState<{ id: string | null, value: number }>({ id: null, value: 500 });
     const [rightPlayer, setRightPlayer] = useState<{ id: string | null, value: number }>({ id: null, value: 500 });
     const [ballPos, setBallPos] = useState<number>(50); // 50 je střed
+    const [targetLimits, setTargetLimits] = useState({ min: 40, max: 60 });
+    const [playerLimits, setPlayerLimits] = useState({ min: 400, max: 600 });
 
     // setTimeLeft(state.remainingTime);
 
@@ -65,13 +71,20 @@ export default function BalanceGame() {
             setBallPos(state.ballPosition);
             setTimeLeft(state.remainingTime);
 
+            // Synchronizace všech limitů
+            if (state.targetMin !== undefined) {
+                // Limity pro arénu (0-100)
+                setTargetLimits({ min: state.targetMin, max: state.targetMax });
+                // Limity pro hráče (0-1000)
+                setPlayerLimits({ min: state.targetMinPlayer, max: state.targetMaxPlayer });
+            }
+
             if (state.isGameOver) {
                 setGameOver(true);
                 setGameResult({
                     isWin: state.isWin,
                     reason: state.endReason
                 });
-                console.log("Hra skončila!", state.isWin);
             }
         });
 
@@ -154,18 +167,23 @@ export default function BalanceGame() {
                     <PlayerPanel
                         value={leftPlayer.value}
                         label={leftPlayer.id ? `Hráč (L)` : "Čekání na hráče..."}
+                        targetMin={playerLimits.min}
+                        targetMax={playerLimits.max}
                         recentMin={0}
                         recentMax={1000}
                     />
                 </Col>
 
-                {/* Centrální aréna - využívá ballPos ze serveru */}
+                {/* Centrální aréna */}
                 <Col md={6}>
                     <BalanceArena
                         leftValue={leftPlayer.value}
                         rightValue={rightPlayer.value}
-                    // Pokud tvůj BalanceArena komponent podporuje přímé nastavení pozice, 
-                    // můžeš mu ji předat, jinak si ji teď vypočítá z průměrů, které mu posílá server.
+                        ballPos={ballPos}
+                        targetMin={playerLimits.min}
+                        targetMax={playerLimits.max}
+                        min={0}
+                        max={1000}
                     />
                 </Col>
 
@@ -174,6 +192,8 @@ export default function BalanceGame() {
                     <PlayerPanel
                         value={rightPlayer.value}
                         label={rightPlayer.id ? `Hráč (P)` : "Volné místo"}
+                        targetMin={playerLimits.min}
+                        targetMax={playerLimits.max}
                         recentMin={0}
                         recentMax={1000}
                     />

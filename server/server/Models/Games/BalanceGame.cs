@@ -10,6 +10,12 @@ namespace server.Models.Games
         public string LeftPlayerId { get; set; }
         public string RightPlayerId { get; set; }
         public bool WasSaved { get; set; } = false;
+        public double TargetMinPlayer { get; set; }
+        public double TargetMaxPlayer { get; set; }
+        public bool LimitsGenerated { get; set; } = false;
+        public double TargetMin { get; set; }
+        public double TargetMax { get; set; }
+        public double TargetWidth { get; set; } = 20.0;
 
         public DateTime? StartTime { get; set; }
         public int DurationSeconds { get; set; } = 120;
@@ -22,6 +28,8 @@ namespace server.Models.Games
         // Veřejné vlastnosti vrací průměr z historie (nebo 500, pokud historie zeje prázdnotou)
         public double LeftValue => _leftHistory.Any() ? _leftHistory.Average() : 500;
         public double RightValue => _rightHistory.Any() ? _rightHistory.Average() : 500;
+
+        public bool IsGameOver => GetBallPosition() <= 0 || GetBallPosition() >= 100 || GetRemainingTime() <= 0;
 
         /// <summary>
         /// Přidá novou hodnotu pro konkrétního hráče a udrží historii na 30 prvcích.
@@ -50,7 +58,11 @@ namespace server.Models.Games
         // Výpočet pozice kuličky (0-100) z průměrovaných hodnot
         public double GetBallPosition()
         {
+            // 1. Získá průměry posledních 30 hodnot obou hráčů (GSR senzory)
             double combined = (LeftValue + RightValue) / 2;
+
+            // 2. Transformuje hodnotu na stupnici 0-100 (vydělením 10.0)
+            // 3. Math.Clamp zajistí, že hodnota nikdy "nevyletí" mimo rozsah 0 a 100
             return Math.Clamp(combined / 10.0, 0, 100);
         }
 
@@ -62,6 +74,26 @@ namespace server.Models.Games
             return Math.Max(0, remaining);
         }
 
-        public bool IsGameOver => GetBallPosition() <= 0 || GetBallPosition() >= 100 || GetRemainingTime() <= 0;
+        public bool IsInBalance => GetBallPosition() >= TargetMin && GetBallPosition() <= TargetMax;
+
+        public void GenerateLimits()
+        {
+            Random rnd = new Random();
+
+            // 1. Definujeme společný cíl pro kuličku (v procentech 0-100)
+            double halfWidth = TargetWidth / 2;
+            double centerPos = rnd.Next(25, 75); // Střed arény
+            TargetMin = centerPos - halfWidth;
+            TargetMax = centerPos + halfWidth;
+
+            // 2. Definujeme cíl pro individuální panely (GSR hodnoty)
+            // Aby to logicky sedělo, pokud budou oba hráči na svém středu, 
+            // kulička bude na svém středu.
+            double centerGSR = centerPos * 10; // Přepočet z 0-100 na 0-1000
+            TargetMinPlayer = centerGSR - 100; // Tolerance +- 100 jednotek GSR
+            TargetMaxPlayer = centerGSR + 100;
+
+            LimitsGenerated = true;
+        }
     }
 }
