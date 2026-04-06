@@ -12,5 +12,7 @@ namespace server.Repositories.Interfaces
         Task AddAsync(User user);
         Task SaveChangesAsync();
         Task LoginUser(User user);
+        Task<bool> UpdateAsync(User user);
+        Task<User?> GetByEmailConfirmationTokenAsync(Guid token);
     }
 }

@@ -21,6 +21,8 @@ namespace server.Models.DB
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         [DataType(DataType.DateTime)]
         public DateTime? LastLogin { get; set; }
+        public bool IsEmailConfirmed { get; set; } = false;
+        public Guid EmailConfirmationToken { get; set; } = Guid.NewGuid();
 
         public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
         public ICollection<GameRoom> CreatedRooms { get; set; } = new List<GameRoom>();

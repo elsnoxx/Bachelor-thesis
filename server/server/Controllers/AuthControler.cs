@@ -105,6 +105,55 @@ namespace server.Controllers
                 return StatusCode(500, "Internal server error");
             }
         }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] UserResetPassword model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                // Předpokládáme, že v IAuthDbService bude metoda ResetPasswordAsync
+                var result = await _authDbService.ResetPasswordAsync(model);
+
+                if (result)
+                {
+                    return Ok("Heslo bylo úspěšně změněno.");
+                }
+
+                return BadRequest("Uživatel s tímto e-mailem neexistuje.");
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Error during password reset: {ex}");
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
+        [HttpGet("confirm-email")]
+        public async Task<IActionResult> ConfirmEmail(string token)
+        {
+            try
+            {
+                var user = await _authDbService.ConfirmEmailAsync(token);
+                if (user.Success)
+                {
+                    return Ok("Email confirmed successfully.");
+                }
+                else
+                {
+                    return BadRequest(user.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Internal server error: {ex}");
+                return StatusCode(500, "Internal server error");
+            }
+        }
     }
 }
 // user@example.com

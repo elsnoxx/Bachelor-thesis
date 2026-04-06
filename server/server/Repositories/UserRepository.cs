@@ -66,6 +66,23 @@ namespace server.Repositories
             _context.Users.Update(user);
             await _context.SaveChangesAsync();
         }
+
+        public async Task<bool> UpdateAsync(User user)
+        {
+            var existingUser = await _context.Users.FindAsync(user.Id);
+            if (existingUser == null)
+            {
+                return false;
+            }
+            _context.Entry(existingUser).CurrentValues.SetValues(user);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<User?> GetByEmailConfirmationTokenAsync(Guid token)
+        {
+            return await _context.Users.FirstOrDefaultAsync(u => u.EmailConfirmationToken == token);
+        }
     }
 
 }

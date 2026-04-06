@@ -4,6 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Bell, PersonCircle } from "react-bootstrap-icons";
 import LoginModal from "./LoginModal";
 import RegisterModal from "./RegisterModal";
+import PasswordModal from "./PasswordModal"; // 1. Importujte modál pro heslo
 import { AuthContext } from "./AuthContext";
 
 const navigation = [
@@ -15,6 +16,7 @@ export default function AppsNavbar() {
   const location = useLocation();
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
   const { user, logout } = useContext(AuthContext);
 
   return (
@@ -23,53 +25,78 @@ export default function AppsNavbar() {
         <Navbar.Brand as={Link} to="/" className="me-4">Biofeedback App</Navbar.Brand>
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
-          {/* Hlavní navigace — zobrazit jen pokud je user */}
-          {user && (
-            <Nav className="me-auto">
-              {navigation.map((item) => (
-                <Nav.Link
-                  key={item.name}
-                  as={Link}
-                  to={item.href}
-                  active={location.pathname === item.href}
-                >
-                  {item.name}
-                </Nav.Link>
-              ))}
-            </Nav>
-          )}
+          
+          {/* LEVÁ ČÁST - me-auto odtlačí vše napravo */}
+          <Nav className="me-auto">
+            {user && navigation.map((item) => (
+              <Nav.Link
+                key={item.name}
+                as={Link}
+                to={item.href}
+                active={location.pathname === item.href}
+              >
+                {item.name}
+              </Nav.Link>
+            ))}
+          </Nav>
 
-          {/* PRAVÁ STRANA */}
+          {/* PRAVÁ ČÁST - Tlačítka nebo Profil */}
           <Nav className="align-items-center">
-            {/* zvonek — skryt pokud neni user */}
-            {user && <Nav.Link href="#" className="position-relative me-3"><Bell size={20} /></Nav.Link>}
-
             {user ? (
-              <Dropdown align="end">
-                <Dropdown.Toggle as="div" className="nav-link position-relative me-3" style={{cursor:"pointer"}}>
-                  <PersonCircle size={20} />
-                </Dropdown.Toggle>
-                <Dropdown.Menu>
-                  <Dropdown.ItemText>{user.name || user.email}</Dropdown.ItemText>
-                  <Dropdown.Divider />
-                  <Dropdown.Item onClick={logout}>Odhlásit</Dropdown.Item>
-                </Dropdown.Menu>
-              </Dropdown>
+              <>
+                <Nav.Link href="#" className="me-3">
+                  <Bell size={20} />
+                </Nav.Link>
+                <Dropdown align="end">
+                  <Dropdown.Toggle as="div" className="nav-link" style={{cursor:"pointer"}}>
+                    <PersonCircle size={20} />
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu>
+                    <Dropdown.ItemText className="fw-bold">{user.name || user.email}</Dropdown.ItemText>
+                    <Dropdown.Divider />
+                    <Dropdown.Item onClick={() => setShowPasswordReset(true)}>
+                      Změnit heslo
+                    </Dropdown.Item>
+                    <Dropdown.Item onClick={logout} className="text-danger">
+                      Odhlásit
+                    </Dropdown.Item>
+                  </Dropdown.Menu>
+                </Dropdown>
+              </>
             ) : (
               <>
-                <Nav.Link onClick={() => setShowLogin(true)} className="position-relative me-2" style={{cursor:"pointer"}}>
-                  <PersonCircle size={20} />
-                </Nav.Link>
-                {/* skryt registraci pokud nechceš aby nebyla dostupná */}
-                <Button variant="outline-primary" size="sm" onClick={() => setShowRegister(true)}>Registrovat</Button>
+                <Button 
+                  variant="link" 
+                  className="nav-link me-2 text-decoration-none" 
+                  onClick={() => setShowLogin(true)}
+                >
+                  Přihlásit
+                </Button>
+                <Button 
+                  variant="primary" 
+                  size="sm" 
+                  onClick={() => setShowRegister(true)}
+                >
+                  Registrovat
+                </Button>
               </>
             )}
-
-            <LoginModal show={showLogin} onHide={() => setShowLogin(false)} />
-            <RegisterModal show={showRegister} onHide={() => setShowRegister(false)} onRegistered={() => setShowLogin(true)} />
           </Nav>
+
         </Navbar.Collapse>
       </Container>
+
+      {/* Modály */}
+      <LoginModal show={showLogin} onHide={() => setShowLogin(false)} />
+      <RegisterModal 
+        show={showRegister} 
+        onHide={() => setShowRegister(false)} 
+        onRegistered={() => setShowLogin(true)} 
+      />
+      <PasswordModal 
+        show={showPasswordReset} 
+        onHide={() => setShowPasswordReset(false)} 
+      />
     </Navbar>
   );
 }
