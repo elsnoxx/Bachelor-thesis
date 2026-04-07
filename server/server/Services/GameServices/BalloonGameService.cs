@@ -1,5 +1,6 @@
 ﻿using server.Models.DTO;
 using server.Models.Games;
+using server.Repositories.Interfaces;
 using server.Services.Utils;
 using System.Collections.Concurrent;
 
@@ -19,16 +20,31 @@ namespace server.Services.GameServices
 
         public object? ProcessInput(string roomId, string playerEmail, double value)
         {
-            var game = _activeGames.GetOrAdd(roomId, id => new BalloonControlGame { RoomId = id });
+            // 1. Získání nebo vytvoření hry se synchronním zámkem pro inicializaci z DB
+            var game = _activeGames.GetOrAdd(roomId, id => {
+                var newGame = new BalloonControlGame { RoomId = id };
 
-            // 1. Registrace hráče
+                // Načtení MaxPlayers z DB
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var repo = scope.ServiceProvider.GetRequiredService<IGameRoomRepository>();
+                    if (Guid.TryParse(id, out Guid roomGuid))
+                    {
+                        var room = repo.GameRoomById(roomGuid).Result; // .Result v tomto kontextu
+                        if (room != null) newGame.MaxPlayers = room.MaxPlayers;
+                    }
+                }
+                return newGame;
+            });
+
+            // 2. Registrace hráče
             if (!game.Players.ContainsKey(playerEmail))
             {
                 game.Players.TryAdd(playerEmail, new BalloonControlGame.BalloonPlayer { Email = playerEmail });
             }
 
-            // 2. Start hry při 2 hráčích
-            if (game.StartTime == null && game.Players.Count >= 2)
+            // 3. Start hry při dosažení počtu hráčů z DB
+            if (game.StartTime == null && game.Players.Count >= game.MaxPlayers)
             {
                 game.StartTime = DateTime.UtcNow;
             }
@@ -36,22 +52,20 @@ namespace server.Services.GameServices
             if (!game.Players.TryGetValue(playerEmail, out var player) || game.IsFinished)
                 return GetState(game);
 
-            // 3. Logika pohybu
-            // GSR hodnota přímo určuje výšku (Altitude)
+            // 4. Logika pohybu
             player.Altitude = value;
             player.LastValue = value;
 
-            // Simulace dopředného pohybu (v reálné hře by se volalo v loopu, 
-            // zde posouváme s každým tickem dat od senzoru)
             if (game.StartTime != null)
             {
-                player.DistanceTraveled += 2; // Konstantní rychlost vpřed
+                player.DistanceTraveled += 2;
 
-                // Kontrola vítězství
                 if (player.DistanceTraveled >= game.FinishLineDistance)
                 {
                     game.IsFinished = true;
                     game.WinnerEmail = player.Email;
+                    // Tady nastavíme ty hlášky
+                    game.EndReason = $"Hráč {player.Email.Split('@')[0]} doletěl do cíle jako první!";
                     SaveFinalStats(game);
                 }
             }
@@ -66,11 +80,12 @@ namespace server.Services.GameServices
             isStarted = game.StartTime != null,
             isFinished = game.IsFinished,
             winner = game.WinnerEmail,
+            endReason = game.EndReason, // Nové pole pro UI
             players = game.Players.Values.Select(p => new
             {
                 email = p.Email,
-                altitude = p.Altitude, // Frontend vykreslí Y osu
-                distance = p.DistanceTraveled, // Frontend vykreslí X osu
+                altitude = p.Altitude,
+                distance = p.DistanceTraveled,
                 progress = (p.DistanceTraveled / game.FinishLineDistance) * 100
             }).ToList()
         };

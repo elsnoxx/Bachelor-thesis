@@ -53,22 +53,39 @@ export default function GameRoomsTable({ gameType, redirectPath }: GameRoomsTabl
     useEffect(() => { fetchGameRooms(); }, [fetchGameRooms]);
 
     const executeJoin = async (roomId: string, password: string | null, roomName: string) => {
-        const userEmail = getUserEmail();
-        if (!userEmail) return alert('Musíš být přihlášen.');
-        setJoining(true);
-        try {
-            const res = await RoomService.joinRoom(roomId, userEmail, password ?? '');
-            setApiMessage(res?.message ?? 'Úspěšně připojeno.');
-            sessionStorage.setItem(`roomName_${roomId}`, roomName);
+    const userEmail = getUserEmail();
+    if (!userEmail) return alert('Musíš být přihlášen.');
+    
+    setJoining(true);
+    setApiMessage(null); // Resetujeme starou zprávu před novým pokusem
+
+    try {
+        const res = await RoomService.joinRoom(roomId, userEmail, password ?? '');
+        
+        // Pokud backend vrací Result objekt, zpráva je v res.message
+        setApiMessage(res?.message ?? 'Úspěšně připojeno.');
+
+        sessionStorage.setItem(`roomName_${roomId}`, roomName);
+        
+        // Malá prodleva, aby uživatel stihl vidět úspěšnou hlášku, než ho to přesměruje
+        setTimeout(() => {
             navigate(`${redirectPath}/${roomId}`, { state: { roomName } });
-        } catch (err) {
-            alert(err instanceof Error ? err.message : 'Chyba připojení');
-            fetchGameRooms();
-        } finally {
-            setJoining(false);
-            setShowPasswordModal(false);
-        }
-    };
+        }, 1000);
+
+    } catch (err: any) {
+        // Tady vytáhneme text, který jsi poslal z C# přes Result.Fail()
+        const backendMessage = err.response?.data?.message || err.response?.data || err.message;
+        
+        setApiMessage(backendMessage); 
+        setError(null); // Nechceme, aby zmizela celá tabulka, jen ukážeme Alert
+        
+        console.error("Join error:", err);
+        fetchGameRooms(); // Obnovíme stav hráčů (možná se mezitím zaplnilo)
+    } finally {
+        setJoining(false);
+        setShowPasswordModal(false);
+    }
+};
 
     if (loading) return <div className="text-center my-4"><Spinner animation="border" /><p>Načítání...</p></div>;
     if (error) return <Alert variant="danger">Chyba: {error} <Button onClick={fetchGameRooms} size="sm">Zkusit znovu</Button></Alert>;

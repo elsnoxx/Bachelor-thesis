@@ -36,7 +36,7 @@ function App() {
             <Route path="/stats/detail/:gameType" element={<StatistikDetailPage />} />
             <Route path="/stats/detail/:sessionId" element={<StatistikDetailPage />} />
             <Route path="/ballance/game/:roomId" element={<BalanceGame />} />
-            <Route path="/ballon/game/:roomId" element={<BallonGame />} />
+            <Route path="/games/ballon/:roomId" element={<BallonGame />} />
             <Route path="/energybattle/game/:roomId" element={<EnergyBattelGame />} />
           </Route>
         </Routes>

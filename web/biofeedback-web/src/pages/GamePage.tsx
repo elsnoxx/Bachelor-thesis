@@ -3,7 +3,7 @@ import { Card, Container, Row, Col } from "react-bootstrap";
 const games = [
     { 
         name: 'Ovládání balónu', 
-        href: '/games/balloon', 
+        href: '/games/ballon', 
         description: 'Udržuj klid a ovládej výšku svého balónu pomocí stresu. Doletíš do cíle jako první?', 
         image: "/img/balloon.avif"
     },

@@ -1,86 +1,62 @@
-interface Player {
-    email: string;
-    altitude: number;
-    progress: number;
+import type { BalloonPlayer } from "../ballonsTypes";
+
+interface Props {
+    players: BalloonPlayer[];
 }
 
-export default function BalloonPlayground({ players }: { players: Player[] }) {
+export default function BalloonPlayground({ players }: Props) {
     return (
         <div style={{
-            width: '100%',
-            height: '600px',
-            backgroundColor: '#87CEEB', // Nebeská modř
             position: 'relative',
-            overflow: 'hidden',
+            height: '500px',
+            background: 'linear-gradient(to top, #87CEEB, #E0F7FA)', // Obloha
             borderRadius: '15px',
-            border: '4px solid #f0f0f0'
+            overflow: 'hidden',
+            border: '2px solid #555'
         }}>
             {/* Cílová čára */}
             <div style={{
                 position: 'absolute',
-                right: '50px',
-                height: '100%',
+                right: '20px',
+                top: 0,
+                bottom: 0,
+                width: '10px',
                 borderLeft: '5px dashed white',
                 zIndex: 1
             }}>
-                <span style={{ color: 'white', fontWeight: 'bold', padding: '10px' }}>CÍL</span>
+                <span style={{ writingMode: 'vertical-rl', color: 'white', marginTop: '10px' }}>FINISH</span>
             </div>
 
-            {players.map((player, index) => (
-                <div 
-                    key={player.email}
+            {players.map((p, index) => (
+                <div
+                    key={p.email}
                     style={{
                         position: 'absolute',
-                        bottom: `${player.altitude}px`, // Výška dle GSR
-                        left: `${player.progress}%`,    // Postup dle DistanceTraveled
-                        transition: 'all 0.1s linear',  // Plynulý pohyb
+                        // X osa: Progress 0-100%
+                        left: `${p.progress}%`,
+                        // Y osa: Mapujeme výšku senzoru (0-1000) na výšku plochy (0-400px)
+                        // Invertujeme, protože 0 v CSS je nahoře
+                        bottom: `${(p.altitude / 1000) * 400}px`,
+                        transition: 'all 0.5s ease-out',
+                        fontSize: '40px',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
                         zIndex: 2
                     }}
                 >
-                    {/* Jednoduchý balón pomocí CSS */}
-                    <div style={{
-                        width: '40px',
-                        height: '50px',
-                        backgroundColor: index === 0 ? 'red' : 'blue',
-                        borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%',
-                        position: 'relative'
-                    }}>
-                        <div style={{
-                            position: 'absolute',
-                            bottom: '-15px',
-                            left: '18px',
-                            width: '2px',
-                            height: '15px',
-                            backgroundColor: '#666'
-                        }} />
-                        <div style={{
-                            position: 'absolute',
-                            bottom: '-25px',
-                            left: '12px',
-                            width: '15px',
-                            height: '10px',
-                            backgroundColor: '#8B4513'
-                        }} />
+                    <div style={{ fontSize: '12px', background: 'rgba(0,0,0,0.5)', padding: '2px 5px', borderRadius: '5px' }}>
+                        {p.email.split('@')[0]}
                     </div>
-                    
-                    <span style={{ 
-                        fontSize: '10px', 
-                        background: 'rgba(255,255,255,0.7)',
-                        padding: '2px 5px',
-                        borderRadius: '5px',
-                        marginTop: '30px'
-                    }}>
-                        {player.email.split('@')[0]}
-                    </span>
+                    {/* Emoji balónu, barva podle indexu */}
+                    <span>{index === 0 ? '🎈' : '🏮'}</span>
                 </div>
             ))}
 
-            {/* Dekorace: Mraky */}
-            <div className="cloud" style={{ top: '50px', left: '10%' }}>☁️</div>
-            <div className="cloud" style={{ top: '150px', left: '60%' }}>☁️</div>
+            {/* Mraky jako dekorace */}
+            <div style={{ position: 'absolute', top: '20%', left: '10%', opacity: 0.5, fontSize: '30px' }}>☁️</div>
+            <div style={{ position: 'absolute', top: '50%', left: '40%', opacity: 0.3, fontSize: '40px' }}>☁️</div>
+            <div style={{ position: 'absolute', top: '15%', left: '70%', opacity: 0.4, fontSize: '30px' }}>☁️</div>
         </div>
     );
 }

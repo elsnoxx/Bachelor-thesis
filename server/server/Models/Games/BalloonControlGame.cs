@@ -10,6 +10,8 @@ namespace server.Models.Games
         public string? WinnerEmail { get; set; }
         public DateTime? StartTime { get; set; }
         public double FinishLineDistance { get; set; } = 1000; // Cílová vzdálenost
+        public int MaxPlayers { get; set; } = 2;
+        public string? EndReason { get; set; }
 
         public class BalloonPlayer
         {

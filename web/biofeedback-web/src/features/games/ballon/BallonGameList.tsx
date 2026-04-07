@@ -23,7 +23,7 @@ export default function BallonGameList() {
                 </Col>
             </Row>
 
-            <GameRoomsTable gameType="ballon" redirectPath="/ballon/game" />
+            <GameRoomsTable gameType="ballon" redirectPath="/games/ballon" />
             
             <CreateGameModal 
                 show={showCreateModal} 
