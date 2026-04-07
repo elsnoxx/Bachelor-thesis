@@ -1,7 +1,5 @@
 // import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
-// import ConnectButton from './commpoment/ConnectButton';
-import LudoGameList from './features/games/ludo/LudoGameList';
 import AppsNavbar from './commpoment/AppsNavbar';
 import AppsFooter from './commpoment/AppsFooter';
 // import { startConnection } from './services/GameConnection';
@@ -12,7 +10,8 @@ import StatistikDetailPage from "./pages/StatistikDetailPage";
 // Stránky (můžeš si je zatím vytvořit jako jednoduché komponenty)
 import HryPage from './pages/GamePage';
 import StatistikyPage from './pages/StatistikPage';
-import LudoGame from './features/games/ludo/LudoGame';
+import BallonGame from './features/games/ballon/BallonGame';
+import BallonGameList from './features/games/ballon/BallonGameList';
 import BalanceGame from './features/games/ballance/BalanceGame';
 import BalanceGameList from './features/games/ballance/BalanceGameList';
 import EnergyBattelGameList from './features/games/energyBattel/EnergyBattelGameList';
@@ -31,13 +30,13 @@ function App() {
           <Route element={<RequireAuth><Outlet /></RequireAuth>}>
             <Route path="/games/energybattle" element={<EnergyBattelGameList />} />
             <Route path="/games/balance" element={<BalanceGameList />} />
-            <Route path="/games/ludo" element={<LudoGameList />} />
+            <Route path="/games/ballon" element={<BallonGameList />} />
             <Route path="/hry" element={<HryPage />} />
             <Route path="/statistiky" element={<StatistikyPage />} />
             <Route path="/stats/detail/:gameType" element={<StatistikDetailPage />} />
             <Route path="/stats/detail/:sessionId" element={<StatistikDetailPage />} />
             <Route path="/ballance/game/:roomId" element={<BalanceGame />} />
-            <Route path="/ludo/game/:roomId" element={<LudoGame />} />
+            <Route path="/ballon/game/:roomId" element={<BallonGame />} />
             <Route path="/energybattle/game/:roomId" element={<EnergyBattelGame />} />
           </Route>
         </Routes>

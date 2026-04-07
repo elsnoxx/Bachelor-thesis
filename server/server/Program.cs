@@ -109,7 +109,7 @@ namespace server
 
             builder.Services.AddSingleton<BallanceGameService>();
             builder.Services.AddSingleton<EnergyBattleGameServices>();
-            builder.Services.AddSingleton<LudoGameServices>();
+            builder.Services.AddSingleton<BalloonGameService>();
 
             builder.Services.AddScoped<FileHelper>();
             builder.Services.AddSingleton<DbWriteQueue>();
@@ -185,8 +185,10 @@ namespace server
             using (var scope = app.Services.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                
+                dbContext.Database.Migrate();
 
-                dbContext.Database.EnsureCreated();
+                // dbContext.Database.EnsureCreated();
 
                 if (!dbContext.Users.Any())
                 {

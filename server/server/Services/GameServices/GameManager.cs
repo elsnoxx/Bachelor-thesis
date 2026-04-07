@@ -11,16 +11,14 @@ namespace server.Services.GameServices
         private readonly Dictionary<string, IGameService> _gameServices = new();
         private readonly Dictionary<string, string> _roomToGameType = new();
 
-        private readonly LudoGameServices _ludoService;
         private readonly EnergyBattleGameServices _energyService;
 
-        public GameManager(BallanceGameService ballanceService, EnergyBattleGameServices energyService, LudoGameServices ludoService)
+        public GameManager(BallanceGameService ballanceService, EnergyBattleGameServices energyService, BalloonGameService balloonService)
         {
             _gameServices["ballance"] = ballanceService;
             _gameServices["energybattle"] = energyService;
-            _gameServices["ludo"] = ludoService;
+            _gameServices["balloon"] = balloonService;
 
-            _ludoService = ludoService;
             _energyService = energyService;
         }
 
@@ -36,18 +34,6 @@ namespace server.Services.GameServices
             return null;
         }
 
-        // Přidána kontrola na null, aby zmizely warningy
-        public object? LudoRollDice(string roomId, string? playerId)
-        {
-            if (string.IsNullOrEmpty(playerId)) return null;
-            return _ludoService.RollDice(roomId, playerId);
-        }
-
-        public object? LudoMovePiece(string roomId, string? playerId, string pieceId)
-        {
-            if (string.IsNullOrEmpty(playerId)) return null;
-            return _ludoService.MovePiece(roomId, playerId, pieceId);
-        }
 
         public void AddPlayerToGame(string gameType, string connectionId, string playerName)
         {

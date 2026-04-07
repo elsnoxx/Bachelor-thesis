@@ -94,31 +94,8 @@ namespace server.Hubs
             {
                 await Clients.Group(roomId).SendAsync("ReceiveGameState", gameState);
 
-                // Pokud hra skončila, pošleme do fronty pro DbWriterWorker
-                // _dbWriteQueue.PushResult(...)
             }
         }
 
-        public async Task LudoRollDice(string roomId)
-        {
-            var userEmail = Context.User?.Identity?.Name;
-            if (string.IsNullOrEmpty(userEmail)) return; // Ochrana proti null
-
-            var state = _gameManager.LudoRollDice(roomId, userEmail);
-            if (state != null)
-            {
-                await Clients.Group(roomId).SendAsync("ReceiveLudoState", state);
-            }
-        }
-
-        public async Task LudoMovePiece(string roomId, string pieceId)
-        {
-            var userEmail = Context.User?.Identity?.Name;
-            var state = _gameManager.LudoMovePiece(roomId, userEmail, pieceId);
-            if (state != null)
-            {
-                await Clients.Group(roomId).SendAsync("ReceiveLudoState", state);
-            }
-        }
     }
 }

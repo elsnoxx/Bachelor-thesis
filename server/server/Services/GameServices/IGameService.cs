@@ -3,6 +3,5 @@
     public interface IGameService
     {
         object ProcessInput(string roomId, string playerId, double value);
-        Dictionary<string, double> GetScores();
     }
 }
