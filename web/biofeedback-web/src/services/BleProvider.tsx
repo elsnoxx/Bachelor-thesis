@@ -17,6 +17,24 @@ export const BleProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
   const deviceRef = useRef<BluetoothDevice | null>(null);
 
+  useEffect(() => {
+    if (!(navigator as any).bluetooth) return;
+
+    const handleAvailabilityChange = (e: any) => {
+      if (e.value) {
+        setError(null); // Bluetooth byl zapnut, smažeme chybu
+      } else {
+        setError("Bluetooth adaptér byl vypnut v systému.");
+      }
+    };
+
+    (navigator as any).bluetooth.addEventListener('availabilitychanged', handleAvailabilityChange);
+
+    return () => {
+      (navigator as any).bluetooth.removeEventListener('availabilitychanged', handleAvailabilityChange);
+    };
+  }, []);
+
   // helper: zjistí dostupnost adaptéru
   async function isBluetoothAvailable(): Promise<boolean> {
     if (!(navigator as any).bluetooth) return false;
