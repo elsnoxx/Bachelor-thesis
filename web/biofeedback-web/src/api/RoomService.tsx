@@ -1,6 +1,6 @@
 import api from "./axiosInstance";
 
-export type GameType = 'ludo' | 'ballance' | 'energybattle';
+export type GameType = 'ballon' | 'ballance' | 'energybattle';
 
 export interface CreateRoomRequest {
     userId: string;

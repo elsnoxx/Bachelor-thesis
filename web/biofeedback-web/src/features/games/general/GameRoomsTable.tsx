@@ -14,7 +14,7 @@ interface GameRoom {
 }
 
 interface GameRoomsTableProps {
-    gameType: 'energybattle' | 'ballance' | 'ludo';
+    gameType: 'energybattle' | 'ballance' | 'ballon';
     redirectPath: string;
 }
 

@@ -129,7 +129,12 @@ namespace server.Services.DbServices
                 }
 
                 var usersInRoom = await _sesionRepository.GetUsersInGameRoomAsync(gameRoomId);
-                if(usersInRoom.Count() >= gameRoom.MaxPlayers)
+                if (usersInRoom.Any(userId => userId == user.Id))
+                {
+                    Log.Warning("User {UserId} is already in the Game Room {RoomId}.", user.Id, gameRoomId);
+                    return Result<bool>.Fail("Již jste v této místnosti připojeni.");
+                }
+                if (usersInRoom.Count() >= gameRoom.MaxPlayers)
                 {
                     Log.Error("Game Room is full.");    
                     return Result<bool>.Fail("Game Room is full.");
