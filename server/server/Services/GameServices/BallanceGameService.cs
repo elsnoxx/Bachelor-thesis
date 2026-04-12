@@ -1,183 +1,92 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using Serilog; // Ujisti se, že máš tento using
-using server.Models.DB;
+using Serilog;
 using server.Models.DTO;
 using server.Models.Games;
-using server.Repositories.Interfaces;
-using server.Services.DbServices.Interfaces;
 using server.Services.Utils;
-using System.Collections.Concurrent;
 
 namespace server.Services.GameServices
 {
-    public class BallanceGameService : IGameService
+    public class BallanceGameService : BaseGameService<BalanceGame>
     {
-        private readonly ConcurrentDictionary<string, BalanceGame> _activeGames = new();
-        private readonly IServiceScopeFactory _scopeFactory;
-        private readonly DbWriteQueue _dbQueue;
-
         public BallanceGameService(IServiceScopeFactory scopeFactory, DbWriteQueue dbQueue)
-        {
-            _scopeFactory = scopeFactory;
-            _dbQueue = dbQueue;
-        }
+            : base(scopeFactory, dbQueue) { }
 
-        private BalanceGame GetOrCreateGame(string roomId)
-        {
-            return _activeGames.GetOrAdd(roomId, id => new BalanceGame { RoomId = id });
-        }
+        protected override BalanceGame CreateGame(string roomId) => new() { RoomId = roomId };
 
-        public object ProcessInput(string roomId, string playerId, double value)
+        public override object? ProcessInput(string roomId, string playerId, double value)
         {
             var game = GetOrCreateGame(roomId);
 
-            // Dynamické přiřazení stran
             if (string.IsNullOrEmpty(game.LeftPlayerId))
                 game.LeftPlayerId = playerId;
             else if (string.IsNullOrEmpty(game.RightPlayerId) && game.LeftPlayerId != playerId)
                 game.RightPlayerId = playerId;
 
-            // Logování STARTU hry
-            if (game.StartTime == null && !string.IsNullOrEmpty(game.LeftPlayerId) && !string.IsNullOrEmpty(game.RightPlayerId))
+            if (game.StartTime == null
+                && !string.IsNullOrEmpty(game.LeftPlayerId)
+                && !string.IsNullOrEmpty(game.RightPlayerId))
             {
                 game.StartTime = DateTime.UtcNow;
                 game.GenerateLimits();
-                Log.Information("[GAME START] Room: {RoomId}, Players: {P1} vs {P2}, Time: {Time}",
-                    roomId, game.LeftPlayerId, game.RightPlayerId, game.StartTime);
-                _ = UpdateRoomStatusToInProgress(roomId);
+                Log.Information("[GAME START] Room: {RoomId}, Players: {P1} vs {P2}",
+                    roomId, game.LeftPlayerId, game.RightPlayerId);
+                NotifyRoomStatus(roomId, RoomStatus.Start);           // <-- base method
             }
 
             if (game.StartTime != null)
             {
                 game.AddValue(playerId, value);
-                SaveBioFeedbackAsync(playerId, roomId, value);
+                SaveBioFeedback(playerId, roomId, value);              // <-- base method
             }
 
             int remaining = game.GetRemainingTime();
 
-            // Logování blížícího se KONCE (volitelné - např. každých 30s)
-            if (remaining > 0 && remaining % 30 == 0 && value % 10 < 1) // omezíme četnost logu
-            {
-
-                Log.Debug("[GAME TICK] Room: {RoomId}, Remaining: {Time}s", roomId, remaining);
-            }
-
-            // Kontrola KONCE hry
-            // Kontrola KONCE hry v rámci metody ProcessInput
             if (game.IsGameOver)
             {
                 if (!game.WasSaved)
                 {
                     game.WasSaved = true;
-                    SaveFinalGameStats(game);
+                    SaveGameResult(game.RoomId, game.LeftPlayerId,     // <-- base method
+                        game.RightPlayerId, "ballance", playerId);
                 }
 
-                bool isWin = false;
-                string reason = "";
                 double ballPos = game.GetBallPosition();
+                bool isWin;
+                string reason;
 
                 if (ballPos <= game.TargetMin)
-                {
-                    isWin = false;
-                    reason = "Prohra: Kulička vypadla na levé straně.";
-                }
+                    { isWin = false; reason = "Loss: the ball fell off the left side."; }
                 else if (ballPos >= game.TargetMax)
-                {
-                    isWin = false;
-                    reason = "Prohra: Kulička vypadla na pravé straně.";
-                }
+                    { isWin = false; reason = "Loss: the ball fell off the right side."; }
                 else if (remaining <= 0)
-                {
-                    isWin = true;
-                    reason = "Vítězství! Dokázali jste spolupracovat a udržet balanc až do konce.";
-                }
+                    { isWin = true; reason = "Victory! You kept balance until the end."; }
                 else
-                {
-                    isWin = false;
-                    reason = "Hra byla ukončena.";
-                }
+                    { isWin = false; reason = "Game ended."; }
 
                 return new
                 {
-                    roomId = game.RoomId,
-                    ballPosition = ballPos,
-                    leftValue = game.LeftValue,
-                    rightValue = game.RightValue,
-                    leftPlayerId = game.LeftPlayerId,
-                    rightPlayerId = game.RightPlayerId,
-                    targetMin = game.TargetMin,
-                    targetMax = game.TargetMax,
-                    targetMinPlayer = game.TargetMinPlayer,
-                    targetMaxPlayer = game.TargetMaxPlayer,
-                    isGameOver = true,
-                    remainingTime = 0,
-                    isWin = isWin,
-                    endReason = reason
+                    roomId = game.RoomId, ballPosition = ballPos,
+                    leftValue = game.LeftValue, rightValue = game.RightValue,
+                    leftPlayerId = game.LeftPlayerId, rightPlayerId = game.RightPlayerId,
+                    targetMin = game.TargetMin, targetMax = game.TargetMax,
+                    targetMinPlayer = game.TargetMinPlayer, targetMaxPlayer = game.TargetMaxPlayer,
+                    isGameOver = true, remainingTime = 0, isWin, endReason = reason
                 };
             }
 
             return new
             {
-                roomId = game.RoomId,
-                ballPosition = game.GetBallPosition(),
-                targetMin = game.TargetMin,
-                targetMax = game.TargetMax,
-                targetMinPlayer = game.TargetMinPlayer,
-                targetMaxPlayer = game.TargetMaxPlayer,
-                leftValue = game.LeftValue,
-                rightValue = game.RightValue,
-                leftPlayerId = game.LeftPlayerId,
-                rightPlayerId = game.RightPlayerId,
-                isGameOver = game.IsGameOver,
-                remainingTime = remaining,
+                roomId = game.RoomId, ballPosition = game.GetBallPosition(),
+                targetMin = game.TargetMin, targetMax = game.TargetMax,
+                targetMinPlayer = game.TargetMinPlayer, targetMaxPlayer = game.TargetMaxPlayer,
+                leftValue = game.LeftValue, rightValue = game.RightValue,
+                leftPlayerId = game.LeftPlayerId, rightPlayerId = game.RightPlayerId,
+                isGameOver = game.IsGameOver, remainingTime = remaining,
             };
         }
 
-        private void SaveFinalGameStats(BalanceGame game)
-        {
-            Log.Information("[GAME END] Queueing stats for room {RoomId}", game.RoomId);
+        public void RemoveRoom(string roomId) => RemoveGame(roomId);  // <-- base method
 
-            // Žádný await, žádný try-catch (ten je ve workeru), žádný IServiceScope
-            _dbQueue.QueueGameResultAsync(new GameResultContext(
-                game.RoomId,
-                game.LeftPlayerId,
-                game.RightPlayerId,
-                "ballance"
-            ));
-        }
-
-        public void RemoveRoom(string roomId)
-        {
-            if (_activeGames.TryRemove(roomId, out var game))
-            {
-                Log.Information("[ROOM REMOVED] Room: {RoomId}", roomId);
-            }
-        }
-
-        private void SaveBioFeedbackAsync(string email, string roomId, double value)
-        {
-            if (Guid.TryParse(roomId, out Guid roomGuid))
-            {
-                // Žádný await, žádný scope. Jen hodíme do fronty.
-                _dbQueue.QueueBioFeedbackAsync(new BioFeedbackMessage(email, roomGuid, (float)value));
-            }
-        }
-
-        private async Task UpdateRoomStatusToInProgress(string roomId)
-        {
-            try
-            {
-                if (Guid.TryParse(roomId, out Guid roomGuid))
-                {
-                    _dbQueue.QueueRoomStatus(new RoomStatusMessage(roomGuid, RoomStatus.Start));
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "[DB UPDATE ERROR] Failed to set InProgress for room {RoomId}", roomId);
-            }
-        }
-
-        public Dictionary<string, double> GetScores() => new Dictionary<string, double>();
+        public Dictionary<string, double> GetScores() => new();
     }
 }

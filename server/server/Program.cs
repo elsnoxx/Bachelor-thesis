@@ -90,8 +90,7 @@ namespace server
 
             builder.Services.AddAutoMapper(typeof(Program));
 
-            // Singleton Service
-            builder.Services.AddSingleton<GameManager>();
+            
 
             // Scoped Services for DB operations
             builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -115,6 +114,8 @@ namespace server
             builder.Services.AddSingleton<DbWriteQueue>();
             builder.Services.AddHostedService<DbWriterWorker>();
 
+            // Singleton Service
+            builder.Services.AddSingleton<GameManager>();
 
             // Cors policy
             builder.Services.AddCors(options =>
