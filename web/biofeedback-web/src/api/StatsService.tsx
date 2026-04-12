@@ -10,7 +10,8 @@ export interface BioPoint {
   isPeak?: boolean;
 }
 
-export interface DetailBioFeedbackData {
+interface DetailBioFeedbackData {
+  title: string;
   averageGsr: number;
   maxGsr: number;
   minGsr: number;
@@ -18,6 +19,7 @@ export interface DetailBioFeedbackData {
   timeAboveThreshold: number;
   chartData: BioPoint[];
   baseline: number;
+  result?: string;
 }
 
 export interface StatItem {
@@ -41,6 +43,8 @@ export const StatsService = {
 
     // Map server keys to frontend format (handle PascalCase, snake_case or camelCase)
     return {
+      title: data.title ?? data.Title ?? "Biofeedback Session",
+      result: data.result ?? data.Result ?? data.gameResult ?? undefined,
       averageGsr: data.averageGsr ?? data.AverageGsr ?? data.average ?? 0,
       maxGsr: data.maxGsr ?? data.MaxGsr ?? data.max ?? 0,
       minGsr: data.minGsr ?? data.MinGsr ?? data.min ?? 0,

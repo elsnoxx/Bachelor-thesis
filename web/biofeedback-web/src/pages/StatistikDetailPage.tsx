@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { StatsService } from '../api/StatsService';
+import { Table, Spinner, Button, Badge, Card, Row, Col } from "react-bootstrap"; // přidej Badge a Card
 import {
   LineChart,
   Line,
@@ -12,7 +13,6 @@ import {
   Legend,
   ReferenceLine,
 } from "recharts";
-import { Table, Spinner, Button } from "react-bootstrap";
 
 interface BioPoint {
   timestamp: string | Date;
@@ -21,6 +21,7 @@ interface BioPoint {
 }
 
 interface DetailBioFeedbackData {
+  title: string;
   averageGsr: number;
   maxGsr: number;
   minGsr: number;
@@ -28,6 +29,7 @@ interface DetailBioFeedbackData {
   timeAboveThreshold: number;
   chartData: BioPoint[];
   baseline: number;
+  result?: string;
 }
 
 export default function StatistikDetailPage() {
@@ -58,6 +60,11 @@ export default function StatistikDetailPage() {
   if (error) return <div style={{ color: "red" }}>{error}</div>;
   if (!summary) return <div>Žádná data.</div>;
 
+  const userJson = localStorage.getItem("user");
+  const currentUserEmail = userJson ? JSON.parse(userJson).email : null;
+  const isWin = summary.result?.toLowerCase() === "win" || (summary.result && summary.result === currentUserEmail);
+
+  
   const chartData = summary.chartData
     .slice()
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
@@ -67,25 +74,45 @@ export default function StatistikDetailPage() {
       peak: p.isPeak ? p.value : null,
     }));
 
+  console.log(summary.title)
+
   return (
     <div>
-      <Button variant="link" onClick={() => navigate(-1)}>← Zpět</Button>
-      <h2>Detail session: {id}</h2>
+      <Button variant="link" onClick={() => navigate(-1)} className="mb-2 p-0">← Zpět k přehledu</Button>
 
-      <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
-        <div>Average: <strong>{summary.averageGsr.toFixed(3)}</strong></div>
-        <div>Max: <strong>{summary.maxGsr.toFixed(3)}</strong></div>
-        <div>Min: <strong>{summary.minGsr.toFixed(3)}</strong></div>
-        <div>Peaks: <strong>{summary.peakCount}</strong></div>
-        <div>Time above threshold: <strong>{summary.timeAboveThreshold}s</strong></div>
-        <div>Baseline: <strong>{summary.baseline.toFixed(3)}</strong></div>
+      <div className="d-flex align-items-center gap-3 mb-4">
+        <h2 className="m-0">{summary.title}</h2>
+        {summary.result && (
+          <Badge bg={isWin ? "success" : "danger"} style={{ fontSize: '1.2rem', padding: '8px 16px' }}>
+            {isWin ? "🏆 VÍTĚZSTVÍ" : "💀 PROHRA"}
+          </Badge>
+        )}
       </div>
+
+      {/* Statistiky v kartách pro lepší přehlednost */}
+      <Row className="mb-4 g-3">
+        {[
+          { label: "AVG EDA", val: summary.averageGsr.toFixed(0), unit: "" },
+          { label: "MAX EDA", val: summary.maxGsr.toFixed(0), unit: "" },
+          { label: "Peaks", val: summary.peakCount, unit: "" },
+          { label: "Threshold", val: summary.timeAboveThreshold, unit: "s" },
+        ].map((item, idx) => (
+          <Col key={idx} xs={6} md={3}>
+            <Card className="text-center shadow-sm">
+              <Card.Body>
+                <div className="text-muted small uppercase">{item.label}</div>
+                <div className="h4 m-0 font-weight-bold">{item.val}{item.unit}</div>
+              </Card.Body>
+            </Card>
+          </Col>
+        ))}
+      </Row>
 
       <ResponsiveContainer width="100%" height={350}>
         <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="time" minTickGap={20} />
-          <YAxis domain={['auto','auto']} />
+          <YAxis domain={['auto', 'auto']} />
           <Tooltip />
           <Legend />
           <ReferenceLine y={summary.baseline} stroke="green" strokeDasharray="4 4" label="baseline" />
