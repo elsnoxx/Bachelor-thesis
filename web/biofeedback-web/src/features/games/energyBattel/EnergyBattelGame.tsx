@@ -50,7 +50,7 @@ export default function EnergyBattleGame() {
         }
       })
       .withAutomaticReconnect()
-      .configureLogging(LogLevel.Critical)
+      .configureLogging(LogLevel.Information)
       .build();
 
     conn.on("ReceiveGameState", (data: any) => {

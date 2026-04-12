@@ -10,6 +10,7 @@ import { useBle } from "../../../services/BleProvider";
 import { PlayerInfoCard } from "./components/PlayerInfoCard";
 import api from "../../../api/axiosInstance";
 
+
 export default function BalloonGame() {
     const { roomId } = useParams<{ roomId: string }>();
     const [connection, setConnection] = useState<HubConnection | null>(null);
@@ -55,7 +56,7 @@ export default function BalloonGame() {
                 }
             })
             .withAutomaticReconnect()
-            .configureLogging(LogLevel.Critical)
+            .configureLogging(LogLevel.Information)
             .build();
 
         conn.onreconnected((connectionId) => {

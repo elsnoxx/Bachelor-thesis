@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Container, Row, Col, Spinner } from "react-bootstrap";
 import { useParams, useLocation } from "react-router-dom";
-import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
+import { HubConnection, HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import PlayerPanel from "./components/PlayerPanel";
 import BalanceArena from "./components/BalancePanet";
 import GameHeader from "../general/GameHeader";
 import GameOverModal from "../general/GameOverModal";
+import api from "../../../api/axiosInstance";
 
 // Definujeme rozhraní pro stav, který nám teď posílá C# server
 interface BallanceGameState {
@@ -79,7 +80,7 @@ export default function BalanceGame() {
                 }
             })
             .withAutomaticReconnect()
-            .configureLogging(LogLevel.Critical)
+            .configureLogging(LogLevel.Information)
             .build();
 
         // POSLOUCHÁME SERVER: Přijímáme kompletní vypočítaný stav
