@@ -1,4 +1,4 @@
-import type { BalloonPlayer } from "../ballonsTypes";
+import type { BalloonPlayer } from "../balloonsTypes";
 
 interface Props {
     players: BalloonPlayer[];

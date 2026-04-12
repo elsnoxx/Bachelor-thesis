@@ -3,7 +3,7 @@ import { useState } from "react"
 import CreateGameModal from "../general/CreateGameModal";
 import GameRoomsTable from "../general/GameRoomsTable"
 
-export default function BallonGameList() {
+export default function BalloonGameList() {
     const [showCreateModal, setShowCreateModal] = useState(false);
 
     return (
@@ -23,11 +23,11 @@ export default function BallonGameList() {
                 </Col>
             </Row>
 
-            <GameRoomsTable gameType="ballon" redirectPath="/games/ballon" />
+            <GameRoomsTable gameType="balloon" redirectPath="/games/balloon" />
             
             <CreateGameModal 
                 show={showCreateModal} 
-                gameType="ballon"
+                gameType="balloon"
                 onHide={() => {
                     setShowCreateModal(false);
                     document.location.reload();

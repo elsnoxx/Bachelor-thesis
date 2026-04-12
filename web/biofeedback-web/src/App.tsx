@@ -10,8 +10,8 @@ import StatistikDetailPage from "./pages/StatistikDetailPage";
 // Stránky (můžeš si je zatím vytvořit jako jednoduché komponenty)
 import HryPage from './pages/GamePage';
 import StatistikyPage from './pages/StatistikPage';
-import BallonGame from './features/games/ballon/BallonGame';
-import BallonGameList from './features/games/ballon/BallonGameList';
+import BalloonGame from './features/games/balloon/BalloonGame';
+import BalloonGameList from './features/games/balloon/BalloonGameList';
 import BalanceGame from './features/games/ballance/BalanceGame';
 import BalanceGameList from './features/games/ballance/BalanceGameList';
 import EnergyBattelGameList from './features/games/energyBattel/EnergyBattelGameList';
@@ -30,13 +30,13 @@ function App() {
           <Route element={<RequireAuth><Outlet /></RequireAuth>}>
             <Route path="/games/energybattle" element={<EnergyBattelGameList />} />
             <Route path="/games/balance" element={<BalanceGameList />} />
-            <Route path="/games/ballon" element={<BallonGameList />} />
+            <Route path="/games/balloon" element={<BalloonGameList />} />
             <Route path="/hry" element={<HryPage />} />
             <Route path="/statistiky" element={<StatistikyPage />} />
             <Route path="/stats/detail/:gameType" element={<StatistikDetailPage />} />
             <Route path="/stats/detail/:sessionId" element={<StatistikDetailPage />} />
             <Route path="/ballance/game/:roomId" element={<BalanceGame />} />
-            <Route path="/games/ballon/:roomId" element={<BallonGame />} />
+            <Route path="/games/balloon/:roomId" element={<BalloonGame />} />
             <Route path="/energybattle/game/:roomId" element={<EnergyBattelGame />} />
           </Route>
         </Routes>

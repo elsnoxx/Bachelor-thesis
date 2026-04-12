@@ -1,13 +1,14 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useLocation } from "react-router-dom";
-import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
+import { HubConnection, HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import { Container, Row, Col, Spinner } from "react-bootstrap";
 import BalloonPlayground from "./components/BalloonPlayground";
 import GameHeader from "../general/GameHeader";
 import GameOverModal from "../general/GameOverModal";
-import type { BalloonGameState } from "./ballonsTypes";
+import type { BalloonGameState } from "./balloonsTypes";
 import { useBle } from "../../../services/BleProvider";
 import { PlayerInfoCard } from "./components/PlayerInfoCard";
+import api from "../../../api/axiosInstance";
 
 export default function BalloonGame() {
     const { roomId } = useParams<{ roomId: string }>();
@@ -34,10 +35,35 @@ export default function BalloonGame() {
 
         const conn = new HubConnectionBuilder()
             .withUrl(`${import.meta.env.VITE_API_URL}/gamehub`, {
-                accessTokenFactory: async () => await getValidToken()
+                accessTokenFactory: async () => {
+                    let token = localStorage.getItem("token");
+                    if (token) {
+                        try {
+                            const payload = JSON.parse(atob(token.split(".")[1]));
+                            const isExpired = payload.exp * 1000 < Date.now();
+
+                            if (isExpired) {
+                                console.log("Token v SignalR vypršel, volám refresh...");
+                                const res = await api.post('/refresh');
+                                token = res.data.token || res.data.Token || res.data.accessToken;
+                            }
+                        } catch (e) {
+                            console.error("Chyba při refreshování tokenu pro SignalR:", e);
+                        }
+                    }
+                    return token || "";
+                }
             })
             .withAutomaticReconnect()
+            .configureLogging(LogLevel.Critical)
             .build();
+
+        conn.onreconnected((connectionId) => {
+            console.log("SignalR Reconnected. Re-joining room...");
+            if (conn.state === "Connected") {
+                conn.invoke("JoinRoom", roomId).catch(err => console.error("JoinRoom failed:", err));
+            }
+        });
 
         conn.on("ReceiveGameState", (state: BalloonGameState) => {
             setGameState(state);
@@ -81,12 +107,12 @@ export default function BalloonGame() {
 
     const leftPlayers = gameState.players.filter((_, i) => i % 2 === 0);
     const rightPlayers = Array.from({ length: Math.max(gameState.players.length, 2) })
-                              .map((_, i) => gameState.players[i])
-                              .filter((_, i) => i % 2 !== 0);
+        .map((_, i) => gameState.players[i])
+        .filter((_, i) => i % 2 !== 0);
 
     return (
         <Container fluid className="py-4 bg-dark text-white" style={{ minHeight: '100vh' }}>
-            <GameHeader gameName="Balloon Race" userEmail={userEmail} />
+            <GameHeader gameName="balloon" userEmail={userEmail} />
 
             <div className="text-center mb-3">
                 <span className={`badge ${isConnected ? 'bg-success' : 'bg-warning text-dark'}`}>
@@ -99,9 +125,9 @@ export default function BalloonGame() {
                 <Col md={2}>
                     {leftPlayers.map((p, i) => (
                         <div key={i} className="mb-4">
-                            <PlayerInfoCard 
-                                player={p} 
-                                playerNumber={(i * 2) + 1} 
+                            <PlayerInfoCard
+                                player={p}
+                                playerNumber={(i * 2) + 1}
                                 isMe={p?.email === userEmail}
                                 align="start"
                             />
@@ -121,9 +147,9 @@ export default function BalloonGame() {
                 <Col md={2}>
                     {rightPlayers.map((p, i) => (
                         <div key={i} className="mb-4">
-                            <PlayerInfoCard 
-                                player={p} 
-                                playerNumber={(i * 2) + 2} 
+                            <PlayerInfoCard
+                                player={p}
+                                playerNumber={(i * 2) + 2}
                                 isMe={p?.email === userEmail}
                                 align="end"
                             />

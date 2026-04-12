@@ -16,8 +16,8 @@ interface CreateGameModalProps {
 
 export default function CreateGameModal({ show, onHide, gameType }: CreateGameModalProps) {
     // Pomocná konstanta pro logiku hráčů
-    const isBallon = gameType === 'ballon';
-    const defaultMaxPlayers = isBallon ? 4 : 2;
+    const isBalloon = gameType === 'balloon';
+    const defaultMaxPlayers = isBalloon ? 4 : 2;
 
     const [formData, setFormData] = useState<GameRoomCreationForm>({
         name: '',
@@ -60,9 +60,9 @@ export default function CreateGameModal({ show, onHide, gameType }: CreateGameMo
         if (!formData.name.trim()) newErrors.name = 'Název hry je povinný';
         
         // Dynamická validace na základě typu hry
-        const maxLimit = isBallon ? 4 : 2;
+        const maxLimit = isBalloon ? 4 : 2;
         if (formData.maxPlayers < 2 || formData.maxPlayers > maxLimit) {
-            newErrors.maxPlayers = `Počet hráčů musí být ${isBallon ? 'mezi 2 a 4' : 'přesně 2'}`;
+            newErrors.maxPlayers = `Počet hráčů musí být ${isBalloon ? 'mezi 2 a 4' : 'přesně 2'}`;
         }
 
         setErrors(newErrors);
@@ -147,8 +147,8 @@ export default function CreateGameModal({ show, onHide, gameType }: CreateGameMo
                             value={formData.maxPlayers}
                             onChange={handleInputChange}
                             min="2"
-                            max={isBallon ? "4" : "2"}
-                            disabled={!isBallon}
+                            max={isBalloon ? "4" : "2"}
+                            disabled={!isBalloon}
                             isInvalid={!!errors.maxPlayers}
                         />
                         <Form.Control.Feedback type="invalid">{errors.maxPlayers}</Form.Control.Feedback>

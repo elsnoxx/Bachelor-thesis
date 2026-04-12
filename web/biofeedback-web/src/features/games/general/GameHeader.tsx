@@ -21,7 +21,7 @@ export default function GameHeader({ gameName, userEmail }: GameHeaderProps) {
             await RoomService.leaveRoom(roomId, userEmail ?? '');
             if(gameName == 'ballance') navigate('/games/balance');
             if(gameName == 'energybattle') navigate('/games/energybattle');
-            if(gameName == 'ballon') navigate('/games/ballon'); 
+            if(gameName == 'balloon') navigate('/games/balloon'); 
         } catch (error) {
             console.error('Chyba při opouštění místnosti:', error);
         }

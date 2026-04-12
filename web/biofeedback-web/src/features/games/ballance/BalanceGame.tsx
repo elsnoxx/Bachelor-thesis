@@ -32,7 +32,7 @@ export default function BalanceGame() {
     const [connection, setConnection] = useState<HubConnection | null>(null);
     const [timeLeft, setTimeLeft] = useState<number>(120);
     const [gameOver, setGameOver] = useState(false);
-    const [gameResult, setGameResult] = useState<{ winnerId: string | null, reason: string | null } | null>(null);
+    const [gameResult, setGameResult] = useState<{ isWin: boolean, reason: string | null } | null>(null);
 
     // Stavy pro hráče a kuličku (nyní synchronizované se serverem)
     const [leftPlayer, setLeftPlayer] = useState<{ id: string | null, value: number }>({ id: null, value: 500 });
@@ -59,9 +59,27 @@ export default function BalanceGame() {
 
         const conn = new HubConnectionBuilder()
             .withUrl(`${import.meta.env.VITE_API_URL}/gamehub`, {
-                accessTokenFactory: () => localStorage.getItem("token") ?? ""
+                accessTokenFactory: async () => {
+                    let token = localStorage.getItem("token");
+                    if (token) {
+                        try {
+                            const payload = JSON.parse(atob(token.split(".")[1]));
+                            const isExpired = payload.exp * 1000 < Date.now();
+
+                            if (isExpired) {
+                                console.log("Token v SignalR vypršel, volám refresh...");
+                                const res = await api.post('/refresh');
+                                token = res.data.token || res.data.Token || res.data.accessToken;
+                            }
+                        } catch (e) {
+                            console.error("Chyba při refreshování tokenu pro SignalR:", e);
+                        }
+                    }
+                    return token || "";
+                }
             })
             .withAutomaticReconnect()
+            .configureLogging(LogLevel.Critical)
             .build();
 
         // POSLOUCHÁME SERVER: Přijímáme kompletní vypočítaný stav
@@ -82,9 +100,16 @@ export default function BalanceGame() {
             if (state.isGameOver) {
                 setGameOver(true);
                 setGameResult({
-                    isWin: state.isWin,
-                    reason: state.endReason
+                    winnerId: state.winnerId ?? null,
+                    reason: state.endReason ?? null
                 });
+            }
+        });
+
+        conn.onreconnected((connectionId) => {
+            console.log("SignalR Reconnected. Re-joining room...");
+            if (conn.state === "Connected") {
+                conn.invoke("JoinRoom", roomId).catch(err => console.error("JoinRoom failed:", err));
             }
         });
 
@@ -101,15 +126,19 @@ export default function BalanceGame() {
 
     // SIMULACE ODESÍLÁNÍ DAT
     useEffect(() => {
-        // Pokud je hra u konce, interval vůbec nespouštěj
-        if (gameOver) return;
+        if (gameOver || !connection || connection.state !== "Connected") return;
 
+        let simulatedValue = 500; // Výchozí hodnota v mS
         const interval = setInterval(() => {
-            if (connection && connection.state === "Connected") {
-                connection.invoke("SendGameData", roomId, "ballance", Math.random() * 1000)
-                    .catch(err => console.error("Error sending data:", err));
-            }
-        }, 1000);
+            // Simulace reálnějšího pohybu signálu (náhodná procházka)
+            // Hodnota se nemění skokově o 1000, ale postupně +/- 5 jednotek
+            const change = (Math.random() - 0.5) * 10;
+            simulatedValue = Math.max(0, Math.min(1000, simulatedValue + change));
+
+            connection.invoke("SendGameData", roomId, "ballance", simulatedValue)
+                .catch(err => console.error("Simulace selhala:", err));
+
+        }, 100);
 
         return () => clearInterval(interval);
     }, [connection, roomId, gameOver]);

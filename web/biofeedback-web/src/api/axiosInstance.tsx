@@ -18,20 +18,20 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // 1. PŘIDÁNA PODMÍNKA: Pokud selže přímo refresh, nepokoušej se o něj znovu a hned odhlaš
+    // 1. ADDED CHECK: If the refresh request itself fails, don't try it again and immediately log out
     if (originalRequest.url.includes('/refresh')) {
         localStorage.clear();
         window.location.href = '/';
         return Promise.reject(error);
     }
 
-    // Pokud je chyba 401 a ještě jsme nezkoušeli retry
+    // If the error is 401 and we haven't retried yet
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
-        // Volání refresh endpointu
-        // POZOR: zkontroluj, zda tvé API vrací "token" nebo "Token"
+        // Call the refresh endpoint
+        // NOTE: check whether your API returns "token" or "Token"
         const res = await axios.post(
             `${import.meta.env.VITE_API_URL}/refresh`, 
             {}, 
@@ -39,19 +39,19 @@ api.interceptors.response.use(
         );
 
         if (res.status === 200) {
-          // OPRAVA: Zkus obě varianty pro jistotu, nebo se koukni do Swaggeru
+          // FIX: Try both variants to be safe, or check the Swagger
           const newToken = res.data.token || res.data.Token;
           
           if (newToken) {
             localStorage.setItem("token", newToken);
             
-            // Zopakuj původní požadavek
+            // Repeat the original request
             originalRequest.headers.Authorization = `Bearer ${newToken}`;
             return api(originalRequest);
           }
         }
       } catch (refreshError) {
-        // Pokud refresh selže (cookie neexistuje nebo expirovala)
+        // If refresh fails (cookie doesn't exist or has expired)
         console.error("Refresh token failed", refreshError);
         localStorage.removeItem("token");
         localStorage.removeItem("user");

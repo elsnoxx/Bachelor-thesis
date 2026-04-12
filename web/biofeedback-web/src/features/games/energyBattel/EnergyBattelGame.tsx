@@ -8,6 +8,7 @@ import { PlayerStatus } from "./components/PlayerStatus";
 import { BattleControls } from "./components/BattleControls";
 import type { GameParticipant, EnergyBattleState } from "./types";
 import { GameOverModal } from "./components/GameOverModal";
+import api from "../../../api/axiosInstance";
 
 
 export default function EnergyBattleGame() {
@@ -26,57 +27,44 @@ export default function EnergyBattleGame() {
   // Pomocný stav pro zastavení simulace
   const isGameOver = gameState?.me.health === 0 || (gameState?.opponent?.health === 0);
 
-  const getValidToken = useCallback(async (): Promise<string> => {
-    let token = localStorage.getItem("token");
-
-    if (!token) return "";
-
-    // Jednoduchá kontrola expirace (JWT payload je druhý segment)
-    try {
-      const payload = JSON.parse(atob(token.split(".")[1]));
-      const isExpired = payload.exp * 1000 < Date.now();
-
-      if (isExpired) {
-        console.warn("Token vypršel, pokus o obnovu...");
-        // Zde voláš svůj refresh endpoint
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/refresh`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: token }),
-          credentials: "include"
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          localStorage.setItem("token", data.accessToken);
-          return data.accessToken;
-        } else {
-          // Pokud refresh selže, vyhodíme chybu (uživatel musí na login)
-          throw new Error("Session expired");
-        }
-      }
-    } catch (e) {
-      console.error("Chyba při kontrole tokenu", e);
-    }
-
-    return token;
-  }, []);
-
   useEffect(() => {
     const conn = new HubConnectionBuilder()
       .withUrl(`${import.meta.env.VITE_API_URL}/gamehub`, {
-        // SignalR zavolá tuto funkci před KAŽDÝM pokusem o připojení/reconnect
-        accessTokenFactory: async () => await getValidToken()
+        accessTokenFactory: async () => {
+          let token = localStorage.getItem("token");
+          if (token) {
+            try {
+              const payload = JSON.parse(atob(token.split(".")[1]));
+              const isExpired = payload.exp * 1000 < Date.now();
+
+              if (isExpired) {
+                console.log("Token v SignalR vypršel, volám refresh...");
+                const res = await api.post('/refresh');
+                token = res.data.token || res.data.Token || res.data.accessToken;
+              }
+            } catch (e) {
+              console.error("Chyba při refreshování tokenu pro SignalR:", e);
+            }
+          }
+          return token || "";
+        }
       })
       .withAutomaticReconnect()
-      .configureLogging(LogLevel.Information)
+      .configureLogging(LogLevel.Critical)
       .build();
 
     conn.on("ReceiveGameState", (data: any) => {
+      if (!data || !data.players) {
+        console.warn("Obdržena neúplná data z ReceiveGameState:", data);
+        return;
+      }
+
       const myEmail = getUserEmail();
       const players = data.players as any[];
-      const meData = players.find((p) => p.email.toLowerCase() === myEmail?.toLowerCase());
-      const opponentData = players.find((p) => p.email !== myEmail);
+
+      // Používáme volitelné řetězení (?.) pro jistotu
+      const meData = players.find((p) => p.email?.toLowerCase() === myEmail?.toLowerCase());
+      const opponentData = players.find((p) => p.email?.toLowerCase() !== myEmail?.toLowerCase());
 
       if (meData) {
         setGameState({
@@ -101,9 +89,13 @@ export default function EnergyBattleGame() {
       }
     });
 
+    conn.onreconnected((connectionId) => {
+      console.log("SignalR Reconnected. Re-joining room...");
+      if (conn.state === "Connected") {
+        conn.invoke("JoinRoom", roomId).catch(err => console.error("JoinRoom failed:", err));
+      }
+    });
 
-
-    // Start spojení
     const startConnection = async () => {
       try {
         await conn.start();
@@ -111,7 +103,6 @@ export default function EnergyBattleGame() {
         await conn.invoke("JoinRoom", roomId);
       } catch (err) {
         console.error("SignalR Connection Error: ", err);
-        // Pokud dostaneme 401 hned na startu, můžeme uživatele přesměrovat
       }
     };
 
@@ -121,7 +112,7 @@ export default function EnergyBattleGame() {
     return () => {
       conn.stop();
     };
-  }, [roomId, getValidToken]);
+  }, [roomId]);
 
   // SIMULÁTOR (Interval pro odesílání dat)
   useEffect(() => {
@@ -136,7 +127,7 @@ export default function EnergyBattleGame() {
           setSimulatedGsr(fakeGsr);
         }
 
-        connection.invoke("SendEnergyData", roomId, fakeGsr)
+        connection.invoke("SendGameData", roomId, "energybattle", fakeGsr)
           .catch(err => console.error("Chyba při odesílání simulace:", err));
       }
     }, 1000);
@@ -164,7 +155,7 @@ export default function EnergyBattleGame() {
 
   return (
     <Container fluid className="py-4 min-vh-100">
-      <GameHeader gameName="Energy Battle" userEmail={getUserEmail()} />
+      <GameHeader gameName="energybattle" userEmail={getUserEmail()} />
 
       <div className="row g-4">
         {/* Levá strana - Moje staty */}
