@@ -70,5 +70,15 @@ namespace server.Repositories
             _context.GameRooms.Remove(gameRoom);
             await _context.SaveChangesAsync();
         }
+
+        public async Task UpdateRoomStatusAsync(Guid roomId, string newStatus)
+        {
+            var gameRoom = await _context.GameRooms.FindAsync(roomId);
+            if (gameRoom != null)
+            {
+                gameRoom.Status = newStatus;
+                await _context.SaveChangesAsync();
+            }
+        }
     }
 }

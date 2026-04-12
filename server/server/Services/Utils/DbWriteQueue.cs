@@ -7,6 +7,7 @@ namespace server.Services.Utils
     {
         private readonly Channel<BioFeedbackMessage> _bioQueue;
         private readonly Channel<GameResultContext> _resultQueue;
+        private readonly Channel<RoomStatusMessage> _roomStatusQueue = Channel.CreateUnbounded<RoomStatusMessage>();
 
         public DbWriteQueue()
         {
@@ -17,8 +18,10 @@ namespace server.Services.Utils
 
         public ValueTask QueueBioFeedbackAsync(BioFeedbackMessage item) => _bioQueue.Writer.WriteAsync(item);
         public ValueTask QueueGameResultAsync(GameResultContext item) => _resultQueue.Writer.WriteAsync(item);
-
+        public void QueueRoomStatus(RoomStatusMessage item) => _roomStatusQueue.Writer.TryWrite(item);
         public IAsyncEnumerable<BioFeedbackMessage> ReadBioAllAsync(CancellationToken ct) => _bioQueue.Reader.ReadAllAsync(ct);
         public IAsyncEnumerable<GameResultContext> ReadResultsAllAsync(CancellationToken ct) => _resultQueue.Reader.ReadAllAsync(ct);
+
+        public IAsyncEnumerable<RoomStatusMessage> ReadRoomStatusAllAsync(CancellationToken ct) => _roomStatusQueue.Reader.ReadAllAsync(ct);
     }
 }

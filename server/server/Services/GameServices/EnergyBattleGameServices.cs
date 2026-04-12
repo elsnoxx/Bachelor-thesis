@@ -2,6 +2,7 @@
 using server.Models.DTO;
 using server.Models.Games;
 using server.Repositories.Interfaces;
+using server.Services.DbServices.Interfaces;
 using server.Services.Utils;
 using System.Collections.Concurrent;
 
@@ -150,18 +151,9 @@ namespace server.Services.GameServices
         {
             try
             {
-                using var scope = _scopeFactory.CreateScope();
-                var roomRepo = scope.ServiceProvider.GetRequiredService<IGameRoomRepository>();
-
                 if (Guid.TryParse(roomId, out Guid roomGuid))
                 {
-                    var gameRoom = await roomRepo.GetByIdAsync(roomGuid);
-                    if (gameRoom != null && gameRoom.Status != "InProgress")
-                    {
-                        gameRoom.Status = "InProgress";
-                        await roomRepo.UpdateAsync(gameRoom);
-                        Log.Information("[DB UPDATE] Room {RoomId} switched to InProgress", roomId);
-                    }
+                    _dbQueue.QueueRoomStatus(new RoomStatusMessage(roomGuid, RoomStatus.Start));
                 }
             }
             catch (Exception ex)
@@ -179,10 +171,8 @@ namespace server.Services.GameServices
 
         private void SaveBioFeedbackAsync(string email, string roomId, double value)
         {
-            // Používáme TryParse, aby aplikace nespadla, pokud roomId není validní GUID
             if (Guid.TryParse(roomId, out Guid roomGuid))
             {
-                // Jen hodíme do fronty - o zbytek se stará BackgroundService (Worker)
                 _dbQueue.QueueBioFeedbackAsync(new BioFeedbackMessage(email, roomGuid, (float)value));
             }
         }

@@ -167,18 +167,9 @@ namespace server.Services.GameServices
         {
             try
             {
-                using var scope = _scopeFactory.CreateScope();
-                var roomRepo = scope.ServiceProvider.GetRequiredService<IGameRoomRepository>();
-
                 if (Guid.TryParse(roomId, out Guid roomGuid))
                 {
-                    var gameRoom = await roomRepo.GetByIdAsync(roomGuid);
-                    if (gameRoom != null && gameRoom.Status != "InProgress")
-                    {
-                        gameRoom.Status = "InProgress";
-                        await roomRepo.UpdateAsync(gameRoom);
-                        Log.Information("[DB UPDATE] Room {RoomId} switched to InProgress", roomId);
-                    }
+                    _dbQueue.QueueRoomStatus(new RoomStatusMessage(roomGuid, RoomStatus.Start));
                 }
             }
             catch (Exception ex)

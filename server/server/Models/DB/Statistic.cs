@@ -23,6 +23,8 @@ namespace server.Models.DB
         /// </summary>
         public float? AverageGsr { get; set; }
 
+        public string Result { get; set; } = string.Empty;
+
         /// <summary>
         /// The highest score achieved (e.g., longest duration in balance mode).
         /// </summary>

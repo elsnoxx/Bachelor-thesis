@@ -17,6 +17,11 @@ namespace server.Repositories.Interfaces
         Task<IEnumerable<GameRoom>> GetAvailableRoomsAsync(string gameType);
 
         /// <summary>
+        /// Set game room status to 'InProgress' when the game starts, and update it to 'Finished' when the game ends.
+        /// </summary>
+        Task UpdateRoomStatusAsync(Guid roomId, string newStatus);
+
+        /// <summary>
         /// Persists a new game room instance.
         /// </summary>
         Task CreateAsync(GameRoom gameRoom);

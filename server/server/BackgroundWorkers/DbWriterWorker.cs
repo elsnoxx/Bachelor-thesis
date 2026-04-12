@@ -1,10 +1,11 @@
-﻿using Serilog;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Serilog;
 using server.Models.DB;
+using server.Models.DTO;
+using server.Repositories.Interfaces;
 using server.Services.DbServices.Interfaces;
 using server.Services.Utils;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using server.Repositories.Interfaces;
 
 namespace server.BackgroundWorkers
 {
@@ -35,9 +36,10 @@ namespace server.BackgroundWorkers
             // Running both consumers in parallel to handle telemetry and final results independently
             var bioTask = ProcessBioQueue(stoppingToken);
             var resultsTask = ProcessResultsQueue(stoppingToken);
+            var roomStatusTask = ProcessRoomStatusQueue(stoppingToken);
 
 
-            await Task.WhenAll(bioTask, resultsTask);
+            await Task.WhenAll(bioTask, resultsTask, roomStatusTask);
         }
 
         /// <summary>
@@ -115,6 +117,34 @@ namespace server.BackgroundWorkers
                 catch (Exception ex)
                 {
                     Log.Error(ex, "Error processing final stats for room {RoomId}", game.RoomId);
+                }
+            }
+        }
+
+        private async Task ProcessRoomStatusQueue(CancellationToken ct)
+        {
+            await foreach (var message in _queue.ReadRoomStatusAllAsync(ct))
+            {
+                try
+                {
+                    using var scope = _scopeFactory.CreateScope();
+                    var roomService = scope.ServiceProvider.GetRequiredService<IGameRoomService>();
+
+                    // Tady používáme message.Status a message.RoomId
+                    if (message.Status  == RoomStatus.Start)
+                    {
+                        await roomService.StartGameRoomAsync(message.RoomId);
+                        Log.Information("[DB WORKER] Room {RoomId} set to InProgress", message.RoomId);
+                    }
+                    else if (message.Status == RoomStatus.Finish)
+                    {
+                        await roomService.FinishGameRoomAsync(message.RoomId);
+                        Log.Information("[DB WORKER] Room {RoomId} set to Finished", message.RoomId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Error updating status for room {RoomId}", message.RoomId);
                 }
             }
         }
