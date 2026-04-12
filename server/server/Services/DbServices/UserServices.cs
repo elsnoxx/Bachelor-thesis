@@ -9,29 +9,32 @@ using server.Services.DbServices.Interfaces;
 
 namespace server.Services.DbServices
 {
-    
-    public class UserDbServices : IUserDbServices
+    /// <summary>
+    /// Implementation of user management services.
+    /// Bridges the gap between raw data repositories and API controllers.
+    /// </summary>
+    public class UserServices : IUserService
     {
         private readonly IUserRepository _userRepository;
         private readonly IMapper _mapper;
         private readonly IWebHostEnvironment _env;
         private readonly FileHelper _fileHelper;
 
-        public UserDbServices(IUserRepository userRepository, IMapper mapper, FileHelper fileHelper)
+        public UserServices(IUserRepository userRepository, IMapper mapper, FileHelper fileHelper)
         {
             _userRepository = userRepository;
             _mapper = mapper;
             _fileHelper = fileHelper;
         }
 
-        public async Task<IEnumerable<UserDTO>> GetAllUsersAsync()
+        public async Task<IEnumerable<UserDTO>> GetAllAsync()
         {
-            var users = await _userRepository.GetAllUserAsync();
+            var users = await _userRepository.GetAllAsync();
             var userDtos = _mapper.Map<IEnumerable<UserDTO>>(users);
             return userDtos;
         }
 
-        public async Task<UserDTO?> GetUserByIdAsync(Guid id)
+        public async Task<UserDTO?> GetByIdAsync(Guid id)
         {
             var user =  await _userRepository.GetByIdAsync(id);
             if (user == null) return null;
@@ -39,7 +42,11 @@ namespace server.Services.DbServices
 
         }
 
-        public async Task<Result<string>> UploadUserAvatarAsync(Guid userId, IFormFile avatarFile)
+        /// <summary>
+        /// Securely uploads a user avatar.
+        /// Includes validation for file existence and MIME type to prevent malicious uploads.
+        /// </summary>
+        public async Task<Result<string>> UploadAvatarAsync(Guid userId, IFormFile avatarFile)
         {
             var allowedTypes = new[] { "image/png", "image/jpeg" };
 
@@ -57,12 +64,10 @@ namespace server.Services.DbServices
 
             try
             {
-                // 3️⃣ Uložení souboru přes FileHelper (včetně vytvoření složky, názvu, kopírování)
                 var relativePath = await _fileHelper.SaveFileAsync("avatars", avatarFile);
 
-                // 4️⃣ Aktualizace uživatele v DB
                 user.AvatarUrl = relativePath;
-                await _userRepository.UpdateUserAsync(user);
+                await _userRepository.UpdateAsync(user);
 
                 return Result<string>.Ok(relativePath);
             }

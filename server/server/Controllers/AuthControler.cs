@@ -10,17 +10,30 @@ using System.Threading.Tasks;
 
 namespace server.Controllers
 {
+    /// <summary>
+    /// Controller handling user authentication, registration, and session management.
+    /// Utilizes JWT tokens for authorization and secure cookies for refresh tokens.
+    /// </summary>
     [ApiController]
     [Route("api/")]
     public class AuthController : ControllerBase
     {
-        private readonly IAuthDbService _authDbService;
-        public AuthController(IAuthDbService authDbService)
+        private readonly IAuthService _authDbService;
+        public AuthController(IAuthService authDbService)
         {
             _authDbService = authDbService;
         }
 
+        /// <summary>
+        /// Authenticates a user and issues a JWT token along with a secure refresh token cookie.
+        /// </summary>
+        /// <param name="userLogin">User credentials (email and password).</param>
+        /// <returns>JWT token and user details if successful.</returns>
+        /// <response code="200">Returns the JWT token and sets the refresh_token cookie.</response>
+        /// <response code="401">Invalid credentials.</response>
         [HttpPost("login")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Login([FromBody] UserLogin userLogin)
         {
             if (!ModelState.IsValid)
@@ -30,27 +43,25 @@ namespace server.Controllers
 
             try
             {
-                // HttpContext je zde dostupný automaticky, předáváme ho do servisy
                 var result = await _authDbService.LoginAsync(userLogin, HttpContext);
 
                 if (result.Success)
                 {
-                    // Nastavení cookie přímo přes vlastnost Response
+                    // Secure cookie configuration to prevent XSS and CSRF
                     var cookieOptions = new CookieOptions
                     {
-                        HttpOnly = true,
-                        Secure = true, // Pokud testuješ na čistém HTTP (ne HTTPS), dej false
-                        SameSite = SameSiteMode.None,
+                        HttpOnly = true, // Prevents JavaScript access to the cookie
+                        Secure = true,   // Ensures the cookie is sent only over HTTPS
+                        SameSite = SameSiteMode.None, // Required for cross-domain requests in modern browsers
                         Expires = DateTime.UtcNow.AddDays(7)
                     };
 
-                    // Tady to je - používáš vlastnost Response, která patří k ControllerBase
-                    Response.Cookies.Append("refresh_token", result.Data.refreshToken, cookieOptions);
+                    Response.Cookies.Append("refresh_token", result.Data.RefreshToken, cookieOptions);
 
                     return Ok(new
                     {
-                        Token = result.Data.tokenJWT,
-                        RefreshToken = result.Data.refreshToken
+                        Token = result.Data.TokenJWT,
+                        RefreshToken = result.Data.RefreshToken
                     });
                 }
 
@@ -63,10 +74,13 @@ namespace server.Controllers
             }
         }
 
+        /// <summary>
+        /// Refreshes an expired JWT token using the refresh token stored in secure cookies.
+        /// </summary>
+        /// <returns>A new JWT token.</returns>
         [HttpPost("refresh")]
         public async Task<IActionResult> Refresh()
         {
-            // Zkontroluj, zda se cookie jmenuje "refresh_token" nebo "refreshToken"
             if (!Request.Cookies.TryGetValue("refresh_token", out var refreshTokenValue))
             {
                 return Unauthorized("Missing refresh token cookie");
@@ -76,12 +90,15 @@ namespace server.Controllers
 
             if (result.Success)
             {
-                // Vracíme JSON s novým JWT, Refresh token zůstává v cookie (nastaveno v servise)
-                return Ok(new { Token = result.Data.tokenJWT });
+                return Ok(new { Token = result.Data.TokenJWT });
             }
             return Unauthorized();
         }
 
+        /// <summary>
+        /// Registers a new user into the system.
+        /// </summary>
+        /// <param name="user">Registration details including email, username and password.</param>
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] UserRegister user)
         {
@@ -106,6 +123,9 @@ namespace server.Controllers
             }
         }
 
+        /// <summary>
+        /// Initiates or completes a password reset process for a user.
+        /// </summary>
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] UserResetPassword model)
         {
@@ -133,6 +153,10 @@ namespace server.Controllers
             }
         }
 
+        /// <summary>
+        /// Confirms user's email address using a token sent during registration.
+        /// </summary>
+        /// <param name="token">Unique confirmation token.</param>
         [HttpGet("confirm-email")]
         public async Task<IActionResult> ConfirmEmail(string token)
         {
@@ -156,6 +180,3 @@ namespace server.Controllers
         }
     }
 }
-// user@example.com
-//   "username": "elsnoxx",
-//   "password": "Test12345!",

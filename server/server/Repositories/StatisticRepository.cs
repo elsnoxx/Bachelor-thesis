@@ -5,6 +5,9 @@ using server.Repositories.Interfaces;
 
 namespace server.Repositories
 {
+    /// <summary>
+    /// Implementation of the repository pattern for player statistics using Entity Framework Core.
+    /// </summary>
     public class StatisticRepository : IStatisticRepository
     {
         private readonly AppDbContext _context;
@@ -16,11 +19,14 @@ namespace server.Repositories
             _logger = logger;
         }
 
-
-        public async Task<IEnumerable<Statistic>> GetStatistic(Guid UserId)
+        /// <summary>
+        /// Retrieves all statistics for a user. 
+        /// In production, this could be extended with .OrderByDescending(s => s.LastPlayed).
+        /// </summary>
+        public async Task<IEnumerable<Statistic>> GetByUserIdAsync(Guid userId)
         {
             return await _context.Statistics
-                .Where(s => s.UserId == UserId)
+                .Where(s => s.UserId == userId)
                 .ToListAsync();
         }
 
@@ -28,10 +34,13 @@ namespace server.Repositories
         {
             _context.Statistics.Add(statistic);
             await _context.SaveChangesAsync();
-
         }
 
-        public async Task<Guid> GetGameRoomBySessionId(Guid sessionId)
+        /// <summary>
+        /// Fetches the GameRoom identifier linked to a specific session.
+        /// Demonstrates cross-entity lookup within the repository layer.
+        /// </summary>
+        public async Task<Guid> GetGameRoomIdBySessionIdAsync(Guid sessionId)
         {
             var gameRoomId = await _context.Sessions
                 .Where(s => s.Id == sessionId)
@@ -40,13 +49,13 @@ namespace server.Repositories
 
             if (gameRoomId == Guid.Empty)
             {
-                _logger.LogWarning("Session with ID {SessionId} was not found in database.", sessionId);
+                _logger.LogWarning("Session with ID {SessionId} was not found when resolving GameRoomId.", sessionId);
             }
 
             return gameRoomId;
         }
 
-        public async Task<Statistic> GetStatisticById(Guid id)
+        public async Task<Statistic?> GetByIdAsync(Guid id)
         {
             return await _context.Statistics
                 .FirstOrDefaultAsync(s => s.Id == id);

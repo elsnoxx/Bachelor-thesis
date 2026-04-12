@@ -14,20 +14,20 @@ namespace server.Services.DbServices
     {
         private readonly IGameRoomRepository _gameRoomRepository;
         private readonly IUserRepository _userRepository;
-        private readonly ISesionRepository _sesionRepository;
+        private readonly ISessionRepository _sessionRepository;
         private readonly IMapper _mapper;
 
-        public GameRoomService(IGameRoomRepository gameRoomRepository, IUserRepository userRepository, ISesionRepository sesionRepository, IMapper mapper)
+        public GameRoomService(IGameRoomRepository gameRoomRepository, IUserRepository userRepository, ISessionRepository sessionRepository, IMapper mapper)
         {
             _gameRoomRepository = gameRoomRepository;
             _userRepository = userRepository;
-            _sesionRepository = sesionRepository;
+            _sessionRepository = sessionRepository;
             _mapper = mapper;
         }
 
-        public async Task FinishGameRoom(Guid gameroomid)
+        public async Task FinishGameRoomAsync(Guid gameroomid)
         {
-            var gameRoom = await _gameRoomRepository.GameRoomById(gameroomid);
+            var gameRoom = await _gameRoomRepository.GetByIdAsync(gameroomid);
             if (gameRoom == null)
             {
                 Log.Error("Game Room {RoomId} not found.", gameroomid);
@@ -36,7 +36,7 @@ namespace server.Services.DbServices
             gameRoom.Status = "Finished";
             try
             {
-                await _gameRoomRepository.UpdateGameRoomAsync(gameRoom);
+                await _gameRoomRepository.UpdateAsync(gameRoom);
                 Log.Information("Game room {RoomId} marked as finished", gameroomid);
             }
             catch (Exception ex)
@@ -45,9 +45,9 @@ namespace server.Services.DbServices
             }
         }
 
-        public async Task StartGameRoom(Guid gameroomid)
+        public async Task StartGameRoomAsync(Guid gameroomid)
         {
-            var gameRoom = await _gameRoomRepository.GameRoomById(gameroomid);
+            var gameRoom = await _gameRoomRepository.GetByIdAsync(gameroomid);
             if (gameRoom == null)
             {
                 Log.Error("Game Room {RoomId} not found.", gameroomid);
@@ -56,7 +56,7 @@ namespace server.Services.DbServices
             gameRoom.Status = "InProgress";
             try
             {
-                await _gameRoomRepository.UpdateGameRoomAsync(gameRoom);
+                await _gameRoomRepository.UpdateAsync(gameRoom);
                 Log.Information("Game room {RoomId} marked as in progress", gameroomid);
             }
             catch (Exception ex)
@@ -67,33 +67,33 @@ namespace server.Services.DbServices
 
         public async Task<Result<IEnumerable<GameRoomDTO>>> GetGameRoomsListAsync(string gameType)
         {
-            var gameRooms = await _gameRoomRepository.AllGameRoomsAsync(gameType);
+            var gameRooms = await _gameRoomRepository.GetAvailableRoomsAsync(gameType);
             var gameRoomsDTO = _mapper.Map<IEnumerable<GameRoomDTO>>(gameRooms);
 
             for(var i = 0; i < gameRooms.Count(); i++)
             {
                 if (gameRooms.ElementAt(i).PasswordHash != null)
                 {
-                    gameRoomsDTO.ElementAt(i).password = "***";
+                    gameRoomsDTO.ElementAt(i).Password = "***";
                 }
 
-                var usersInRoom = await _sesionRepository.GetUsersInGameRoomAsync(gameRooms.ElementAt(i).Id);
+                var usersInRoom = await _sessionRepository.GetUsersInGameRoomAsync(gameRooms.ElementAt(i).Id);
                 gameRoomsDTO.ElementAt(i).CurrentPlayers = usersInRoom.Count();
             }
 
             return Result<IEnumerable<GameRoomDTO>>.Ok(gameRoomsDTO);
         }
 
-        public async Task<Result<IEnumerable<UserDTO>>> GetUsersGameRoomAsync(Guid gameRoomId)
+        public async Task<Result<IEnumerable<UserDTO>>> GetUsersInGameRoomAsync(Guid gameRoomId)
         {
-            var checkRoom = await _gameRoomRepository.GameRoomExistsAsync(gameRoomId);
-            if (checkRoom)
+            var checkRoom = await _gameRoomRepository.GetByIdAsync(gameRoomId);
+            if (checkRoom == null)
             {
                 Log.Error("Game Room {RoomId} not found.", gameRoomId);
                 return Result<IEnumerable<UserDTO>>.Fail("Game Room not found.");
             }
 
-            var users = _sesionRepository.GetUsersInGameRoomAsync(gameRoomId);
+            var users = await _sessionRepository.GetUsersInGameRoomAsync(gameRoomId);
             var usersDTO = _mapper.Map<IEnumerable<UserDTO>>(users);
             return Result<IEnumerable<UserDTO>>.Ok(usersDTO);
         }
@@ -104,7 +104,7 @@ namespace server.Services.DbServices
             var gameRoom = CreateGameRoom(gameRoomDTO, user.Id);
             try
             {
-                await _gameRoomRepository.CreateGameRoomAsync(gameRoom);
+                await _gameRoomRepository.CreateAsync(gameRoom);
                 Log.Information("Game room {RoomId} created successfully", gameRoom.Id);
                 return Result<bool>.Ok(true);
             }
@@ -121,14 +121,14 @@ namespace server.Services.DbServices
             try
             {
                 var user = await _userRepository.GetByEmailAsync(request.UserEmail);
-                var gameRoom = await _gameRoomRepository.GameRoomById(gameRoomId);
+                var gameRoom = await _gameRoomRepository.GetByIdAsync(gameRoomId);
                 if (user == null || gameRoom == null)
                 {
                     Log.Error("User or Game Room not found.");
                     return Result<bool>.Fail("User or Game Room not found.");
                 }
 
-                var usersInRoom = await _sesionRepository.GetUsersInGameRoomAsync(gameRoomId);
+                var usersInRoom = await _sessionRepository.GetUsersInGameRoomAsync(gameRoomId);
                 if (usersInRoom.Any(userId => userId == user.Id))
                 {
                     Log.Warning("User {UserId} is already in the Game Room {RoomId}.", user.Id, gameRoomId);
@@ -160,7 +160,7 @@ namespace server.Services.DbServices
 
                 var session = CreateSesion(user.Id, gameRoomId);
 
-                var added = await _sesionRepository.AddUserToSesion(session);
+                var added = await _sessionRepository.AddUserToSessionAsync(session);
                 if (added)
                 {
                     Log.Debug("User {UserId} joined game room {RoomId}", user.Id, gameRoomId);
@@ -180,20 +180,20 @@ namespace server.Services.DbServices
         {
             try
             {
-                var user = await _userRepository.GetByEmailAsync(request.userEmail);
-                var gameRoom = await _gameRoomRepository.GameRoomById(gameRoomId);
+                var user = await _userRepository.GetByEmailAsync(request.UserEmail);
+                var gameRoom = await _gameRoomRepository.GetByIdAsync(gameRoomId);
                 if (user == null || gameRoom == null)
                 {
                     Log.Error("User or Game Room not found.");
                     return Result<bool>.Fail("User or Game Room not found.");
                 }
-                var usersInRoom = await _sesionRepository.GetUsersInGameRoomAsync(gameRoomId);
+                var usersInRoom = await _sessionRepository.GetUsersInGameRoomAsync(gameRoomId);
                 if (usersInRoom.Contains(user.Id) == false)
                 {
                     Log.Error("User not in the Game Room.");
                     return Result<bool>.Fail("User not in the Game Room.");
                 }
-                var removed = await _sesionRepository.RemoveUserFromSesion(user.Id, gameRoomId);
+                var removed = await _sessionRepository.RemoveUserFromSessionAsync(user.Id, gameRoomId);
                 if (removed)
                 {
                     Log.Debug("User {UserId} left game room {RoomId}", user.Id, gameRoomId);
@@ -212,7 +212,7 @@ namespace server.Services.DbServices
 
         private GameRoom CreateGameRoom(GameRoomCreationDTO gameRoomDTO, Guid userId)
         {
-            var password = string.IsNullOrWhiteSpace(gameRoomDTO.password) ? null : gameRoomDTO.password;
+            var password = string.IsNullOrWhiteSpace(gameRoomDTO.Password) ? null : gameRoomDTO.Password;
 
             var gameRoom = new GameRoom
             {

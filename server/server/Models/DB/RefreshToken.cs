@@ -1,5 +1,9 @@
 ﻿namespace server.Models.DB
 {
+    /// <summary>
+    /// Security entity used for maintaining long-lived user sessions.
+    /// Supports revocation and rotation to prevent unauthorized access.
+    /// </summary>
     public class RefreshToken
     {
         public Guid Id { get; set; } = Guid.NewGuid();
@@ -10,6 +14,9 @@
         public DateTime Created { get; set; } = DateTime.UtcNow;
         public string? CreatedByIp { get; set; }
 
+        /// <summary>
+        /// If set, indicates the token is no longer valid due to logout or security breach.
+        /// </summary>
         public DateTime? Revoked { get; set; }
         public string? RevokedByIp { get; set; }
         public string? ReplacedByToken { get; set; }

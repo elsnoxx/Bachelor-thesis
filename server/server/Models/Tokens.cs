@@ -1,8 +1,18 @@
-﻿namespace server.Models
+﻿namespace server.Models.DTO
 {
+    /// <summary>
+    /// Holds a pair of tokens required for secure user authentication and session renewal.
+    /// </summary>
     public class Tokens
     {
-        public string tokenJWT { get; set; } = string.Empty;
-        public string refreshToken { get; set; } = string.Empty;
+        /// <summary>
+        /// Short-lived JSON Web Token (JWT) for authorizing API requests.
+        /// </summary>
+        public string TokenJWT { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Long-lived token used to obtain a new JWT without re-authenticating.
+        /// </summary>
+        public string RefreshToken { get; set; } = string.Empty;
     }
 }

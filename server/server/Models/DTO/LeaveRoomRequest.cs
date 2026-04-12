@@ -1,7 +1,11 @@
-﻿namespace server.Models.DTO
+﻿using System.ComponentModel.DataAnnotations;
+
+/// <summary>
+/// Request object used when a player intentionally leaves a room.
+/// </summary>
+public class LeaveRoomRequest
 {
-    public class LeaveRoomRequest
-    {
-        public string userEmail{ get; set; }
-    }
+    [Required]
+    [EmailAddress]
+    public string UserEmail { get; set; }
 }

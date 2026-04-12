@@ -6,6 +6,11 @@ using System;
 
 namespace server.Data
 {
+    /// <summary>
+    /// Database context for the application, responsible for configuring entity mappings,
+    /// relationships, and database-level optimizations like indexes.
+    /// Utilizes Entity Framework Core with PostgreSQL.
+    /// </summary>
     public class AppDbContext : DbContext
     {
         public DbSet<User> Users => Set<User>();
@@ -19,6 +24,9 @@ namespace server.Data
         {
         }
 
+        /// <summary>
+        /// Configures the schema, fluid API relationships, and database indexes.
+        /// </summary>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // Relace: User → GameRoom
@@ -60,6 +68,7 @@ namespace server.Data
                 .HasForeignKey(b => b.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // Default value for Statistics ID (PostgreSQL specific)
             modelBuilder.Entity<Statistic>()
                 .Property(s => s.Id)
                 .HasDefaultValueSql("gen_random_uuid()");

@@ -97,14 +97,14 @@ namespace server
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<ITokenRepository, TokenRepository>();
             builder.Services.AddScoped<IGameRoomRepository, GameRoomRepository>();
-            builder.Services.AddScoped<ISesionRepository, SesionRepository>();
+            builder.Services.AddScoped<ISessionRepository, SessionRepository>();
             builder.Services.AddScoped<IStatisticRepository, StatisticRepository>();
             builder.Services.AddScoped<IBiofeedbackRepository, BiofeedbackRepository>();
 
-            builder.Services.AddScoped<IUserDbServices, UserDbServices>();
-            builder.Services.AddScoped<IAuthDbService, AuthDbService>();
+            builder.Services.AddScoped<IUserService, UserServices>();
+            builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IGameRoomService, GameRoomService>();
-            builder.Services.AddScoped<IStatisticServices, StatisticServices>();
+            builder.Services.AddScoped<IStatisticService, StatisticService>();
             builder.Services.AddScoped<IJwtUtils, JwtUtils>();
 
             builder.Services.AddSingleton<BallanceGameService>();

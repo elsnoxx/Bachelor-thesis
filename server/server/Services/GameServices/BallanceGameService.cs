@@ -172,11 +172,11 @@ namespace server.Services.GameServices
 
                 if (Guid.TryParse(roomId, out Guid roomGuid))
                 {
-                    var gameRoom = await roomRepo.GameRoomById(roomGuid);
+                    var gameRoom = await roomRepo.GetByIdAsync(roomGuid);
                     if (gameRoom != null && gameRoom.Status != "InProgress")
                     {
                         gameRoom.Status = "InProgress";
-                        await roomRepo.UpdateGameRoomAsync(gameRoom);
+                        await roomRepo.UpdateAsync(gameRoom);
                         Log.Information("[DB UPDATE] Room {RoomId} switched to InProgress", roomId);
                     }
                 }

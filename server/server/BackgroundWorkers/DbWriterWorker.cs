@@ -8,6 +8,11 @@ using server.Repositories.Interfaces;
 
 namespace server.BackgroundWorkers
 {
+    /// <summary>
+    /// Background service responsible for consuming queued database write operations.
+    /// It processes EDA (GSR) telemetry data and final game statistics asynchronously 
+    /// to ensure minimal latency for the SignalR real-time communication.
+    /// </summary>
     public class DbWriterWorker : BackgroundService
     {
         private readonly DbWriteQueue _queue;
@@ -19,18 +24,26 @@ namespace server.BackgroundWorkers
             _scopeFactory = scopeFactory;
         }
 
+        /// <summary>
+        /// Starts the background processing of biofeedback and game result queues.
+        /// </summary>
+        /// <param name="stoppingToken">Token to signal service shutdown.</param>
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             Log.Information("DbWriterWorker is starting.");
 
-            // Spustíme oba konzumenty paralelně
+            // Running both consumers in parallel to handle telemetry and final results independently
             var bioTask = ProcessBioQueue(stoppingToken);
             var resultsTask = ProcessResultsQueue(stoppingToken);
 
-            // Běžíme, dokud oba úkoly neskončí (což bude při vypnutí aplikace)
+
             await Task.WhenAll(bioTask, resultsTask);
         }
 
+        /// <summary>
+        /// Processes the stream of EDA/GSR data points from the queue.
+        /// Each data point is saved to the database for future session analysis.
+        /// </summary>
         private async Task ProcessBioQueue(CancellationToken ct)
         {
             // Čteme z fronty pro BioFeedback (GSR data)
@@ -38,19 +51,23 @@ namespace server.BackgroundWorkers
             {
                 try
                 {
+                    // Using a scope because IStatisticServices is a scoped service
                     using var scope = _scopeFactory.CreateScope();
-                    var statisticService = scope.ServiceProvider.GetRequiredService<IStatisticServices>();
+                    var statisticService = scope.ServiceProvider.GetRequiredService<IStatisticService>();
 
-                    // Zápis jednotlivého bodu biofeedbacku
-                    await statisticService.AddBioFeedbackByEmailAsync(message.email, message.roomId, message.value);
+                    await statisticService.AddBioFeedbackByEmailAsync(message.Email, message.RoomId, message.Value);
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Error writing biofeedback to DB for user {Email}", message.email);
+                    Log.Error(ex, "Error writing biofeedback to DB for user {Email}", message.Email);
                 }
             }
         }
 
+        /// <summary>
+        /// Processes game completion events. Calculates final session summaries (average/max GSR)
+        /// and updates player statistics once the game ends.
+        /// </summary>
         private async Task ProcessResultsQueue(CancellationToken ct)
         {
             // Čteme z fronty pro finální výsledky her
@@ -58,27 +75,26 @@ namespace server.BackgroundWorkers
             {
                 try
                 {
-                    // Malé zpoždění, aby se stihla zapsat poslední GSR data z druhé fronty
+                    // Delay ensuring that all physiological data points from ProcessBioQueue 
+                    // have been persisted before calculating the final average.
                     await Task.Delay(500, ct);
 
                     using var scope = _scopeFactory.CreateScope();
-                    var statisticService = scope.ServiceProvider.GetRequiredService<IStatisticServices>();
+                    var statisticService = scope.ServiceProvider.GetRequiredService<IStatisticService>();
                     var gameroomService = scope.ServiceProvider.GetRequiredService<IGameRoomService>();
-                    var sesionRepo = scope.ServiceProvider.GetRequiredService<ISesionRepository>();
+                    var sesionRepo = scope.ServiceProvider.GetRequiredService<ISessionRepository>();
                     var userRepo = scope.ServiceProvider.GetRequiredService<IUserRepository>();
 
-                    if (!Guid.TryParse(game.roomId, out Guid roomGuid)) continue;
+                    if (!Guid.TryParse(game.RoomId, out Guid roomGuid)) continue;
 
                     var players = new[] { game.LeftPlayerId, game.RightPlayerId };
 
                     foreach (var email in players.Where(e => !string.IsNullOrEmpty(e)))
                     {
-                        // 1. Výpočet průměru a max z dat, která už jsou v DB
                         var user = await userRepo.GetByEmailAsync(email);
                         var summary = await statisticService.GetSessionSummaryAsync(email, roomGuid);
-                        var sesionId = await sesionRepo.GetSesionIdByEmailAndRoomAsync(user.Id, roomGuid);
+                        var sesionId = await sesionRepo.GetSessionIdByUserAndRoomAsync(user.Id, roomGuid);
 
-                        // 2. Vytvoření statistického záznamu
                         var stats = new Statistic
                         {
                             GameType = game.GameType,
@@ -90,15 +106,15 @@ namespace server.BackgroundWorkers
                         };
 
                         await statisticService.AddStatisticByEmailAsync(email, stats);
-                        Log.Information("[DB WORKER] Final stats saved for {Email} in room {RoomId}. Avg: {Avg}", email, game.roomId, stats.AverageGsr);
+                        Log.Information("[DB WORKER] Final stats saved for {Email} in room {RoomId}. Avg: {Avg}", email, game.RoomId, stats.AverageGsr);
                     }
 
-                    await gameroomService.FinishGameRoom(roomGuid);
+                    await gameroomService.FinishGameRoomAsync(roomGuid);
                 }
-                catch (OperationCanceledException) { /* Ignorovat při vypínání */ }
+                catch (OperationCanceledException) { /* Standard shutdown behavior */ }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Error processing final stats for room {RoomId}", game.roomId);
+                    Log.Error(ex, "Error processing final stats for room {RoomId}", game.RoomId);
                 }
             }
         }

@@ -1,6 +1,7 @@
 ﻿using Serilog;
-using server.Services.GameServices;
 using server.Models;
+using server.Models.DTO;
+using server.Services.GameServices;
 
 namespace server.Services.GameServices
 {

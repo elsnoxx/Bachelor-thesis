@@ -30,7 +30,7 @@ namespace server.Services.GameServices
                     var repo = scope.ServiceProvider.GetRequiredService<IGameRoomRepository>();
                     if (Guid.TryParse(id, out Guid roomGuid))
                     {
-                        var room = repo.GameRoomById(roomGuid).Result; // .Result v tomto kontextu
+                        var room = repo.GetByIdAsync(roomGuid).Result; // .Result v tomto kontextu
                         if (room != null) newGame.MaxPlayers = room.MaxPlayers;
                     }
                 }

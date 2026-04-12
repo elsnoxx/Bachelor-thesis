@@ -1,5 +1,8 @@
 ﻿namespace server.Models.DTO
 {
+    /// <summary>
+    /// Minimal summary of a biofeedback session for quick dashboard views.
+    /// </summary>
     public class BioSummary
     {
         public float Avg { get; set; }

@@ -1,21 +1,39 @@
-﻿using server.Models.DB;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
-public class BioFeedback
+namespace server.Models.DB
 {
-    public int Id { get; set; }
+    /// <summary>
+    /// Represents a high-frequency telemetry data point of Electrodermal Activity (EDA).
+    /// Stores the skin conductance value linked to a specific user and game session.
+    /// </summary>
+    public class BioFeedback
+    {
+        public int Id { get; set; }
 
-    // Cizí klíče (vždy velká písmena pro konzistenci)
-    public Guid GameRoomId { get; set; }
-    public Guid UserId { get; set; }
+        /// <summary>
+        /// Reference to the GameRoom where the data was recorded.
+        /// </summary>
+        public Guid GameRoomId { get; set; }
 
-    // Navigační vlastnosti (přejmenujte na velká písmena)
-    [JsonIgnore]
-    public User User { get; set; } = null!;
+        /// <summary>
+        /// Reference to the User who produced the physiological signal.
+        /// </summary>
+        public Guid UserId { get; set; }
 
-    [JsonIgnore]
-    public GameRoom GameRoom { get; set; } = null!;
+        [JsonIgnore]
+        public virtual User User { get; set; } = null!;
 
-    public float GsrValue { get; set; }
-    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        [JsonIgnore]
+        public virtual GameRoom GameRoom { get; set; } = null!;
+
+        /// <summary>
+        /// Measured Skin Conductance (GSR) value, typically in microsiemens.
+        /// </summary>
+        public float GsrValue { get; set; }
+
+        /// <summary>
+        /// UTC timestamp of the measurement for precise time-series analysis.
+        /// </summary>
+        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    }
 }

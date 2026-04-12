@@ -25,14 +25,14 @@ using System.Text;
 
 namespace server.Services.DbServices
 {
-    public class AuthDbService : IAuthDbService
+    public class AuthService : IAuthService
     {
         private readonly IUserRepository _userRepository;
         private readonly IJwtUtils _jwtUtils;
         private readonly ITokenRepository _tokenRepository;
         private readonly AppDbContext _context;
         private readonly IConfiguration _configuration;
-        public AuthDbService(IUserRepository userRepository, IJwtUtils jwtUtils, ITokenRepository tokenRepository, AppDbContext appDbContext, IConfiguration configuration)
+        public AuthService(IUserRepository userRepository, IJwtUtils jwtUtils, ITokenRepository tokenRepository, AppDbContext appDbContext, IConfiguration configuration)
         {
             _userRepository = userRepository;
             _jwtUtils = jwtUtils;
@@ -62,10 +62,10 @@ namespace server.Services.DbServices
 
             var tokens = GenerateTokens(user);
 
-            // Vytvoření refresh tokenu
-            var newRefreshToken = CreateRefreshToken(user.Id, HttpHelper.GetClientIp(httpContext), tokens.refreshToken);
+            // Create refresh token and save it to the database
+            var newRefreshToken = CreateRefreshToken(user.Id, HttpHelper.GetClientIp(httpContext), tokens.RefreshToken);
 
-
+            // Register the login and save the refresh token in a transaction
             await RegisterLogin(newRefreshToken);
 
             return Result<Tokens>.Ok(tokens);
@@ -132,7 +132,7 @@ namespace server.Services.DbServices
                 return Result<Tokens>.Fail("No refresh token provided.");
             }
 
-            var tokenInfo = await _tokenRepository.GetByRefreshTokenAsync(refreshToken);
+            var tokenInfo = await _tokenRepository.GetByTokenAsync(refreshToken);
 
             if (tokenInfo == null || tokenInfo.Expires < DateTime.UtcNow)
             {
@@ -143,8 +143,8 @@ namespace server.Services.DbServices
 
             var tokens = GenerateTokens(user);
 
-            // Vytvoření refresh tokenu
-            var newRefreshToken = CreateRefreshToken(user.Id, HttpHelper.GetClientIp(httpContext), tokens.refreshToken);
+            // Refresh token rotation: create a new refresh token and revoke the old one
+            var newRefreshToken = CreateRefreshToken(user.Id, HttpHelper.GetClientIp(httpContext), tokens.RefreshToken);
 
             await NewRefreshToken(newRefreshToken, tokenInfo );
 
@@ -159,20 +159,20 @@ namespace server.Services.DbServices
             try
             {
                 var user = await _userRepository.GetByIdAsync(refreshToken.UserId);
-                // Aktualizace dat uživatele
-                await _userRepository.LoginUser(user);
+                // Update last login time for the user
+                await _userRepository.UpdateLastLoginAsync(user);
 
                 await _tokenRepository.AddAsync(refreshToken);
 
-                // Potvrzení celé transakce
+                // Confirm the entire transaction
                 await transaction.CommitAsync();
             }
             catch (Exception ex)
             {
-                // Vrácení všech změn v případě chyby
+                // revert all changes in case of an error
                 await transaction.RollbackAsync();
                 Log.Error(ex, "Error during RegisterLoginAsync");
-                throw; // Propagace chyby dál
+                throw; // Propagate the error further
             }
         }
 
@@ -181,26 +181,26 @@ namespace server.Services.DbServices
             await using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                await _tokenRepository.TokenRevocation(tokenInfo.Id, newRefreshToken.CreatedByIp, newRefreshToken.Token);
+                await _tokenRepository.RevokeTokenAsync(tokenInfo.Id, newRefreshToken.CreatedByIp, newRefreshToken.Token);
 
                 await _tokenRepository.AddAsync(newRefreshToken);
 
-                // Potvrzení celé transakce
+                // Confirm the entire transaction
                 await transaction.CommitAsync();
             }
             catch (Exception ex)
             {
-                // Vrácení všech změn v případě chyby
+                // Revert all changes in case of an error
                 await transaction.RollbackAsync();
                 Log.Error(ex, "Error during NewRefreshToken");
-                throw; // Propagace chyby dál
+                throw; // Propagate the error further
             }
 
         }
 
         private async Task SendConfirmationEmail(string email)
         {
-            // Čtení z appsettings.json (klíče musí přesně odpovídat názvům v JSONu)
+            // Read SMTP configuration from appsettings.json or environment variables
             var smtpHost = _configuration["SMTP_HOST"];
             var smtpPort = int.Parse(_configuration["SMTP_PORT"] ?? "587");
             var smtpUser = _configuration["SMTP_USER"];
@@ -236,7 +236,7 @@ namespace server.Services.DbServices
 
         public async Task<bool> ResetPasswordAsync(UserResetPassword model)
         {
-            // 1. Najít uživatele podle e-mailu
+            // 1. Search for the user by email
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.Email);
 
             if (user == null)
@@ -244,10 +244,10 @@ namespace server.Services.DbServices
                 return false;
             }
 
-            // 2. Zahašovat nové heslo (použij stejnou metodu jako při registraci, např. BCrypt)
+            // 2. Hash the new password and update the user's password hash
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
 
-            // 3. Uložit změny
+            // 3. Save the changes to the database
             _context.Users.Update(user);
             await _context.SaveChangesAsync();
 
@@ -258,8 +258,8 @@ namespace server.Services.DbServices
         {
             return new Tokens
             {
-                tokenJWT = _jwtUtils.GenerateJwtToken(user),
-                refreshToken = _jwtUtils.GenerateRefreshToken()
+                TokenJWT = _jwtUtils.GenerateJwtToken(user),
+                RefreshToken = _jwtUtils.GenerateRefreshToken()
             };
         }
 

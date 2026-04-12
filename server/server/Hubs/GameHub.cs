@@ -11,15 +11,19 @@ using System.Threading.Tasks;
 
 namespace server.Hubs
 {
-    [Authorize]
+    /// <summary>
+    /// SignalR Hub responsible for real-time multiplayer synchronization.
+    /// Handles player connections, sensor data distribution (GSR), and game state updates.
+    /// </summary>
+    [Authorize] // Requires a valid JWT token for connection
     public class GameHub : Hub
     {
         private readonly GameManager _gameManager;
-        private readonly IStatisticServices _statisticService;
+        private readonly IStatisticService _statisticService;
         private readonly IUserRepository _userRepository;
-        private readonly IStatisticServices _statisticServices;
+        private readonly IStatisticService _statisticServices;
 
-        public GameHub(GameManager gameManager, IStatisticServices statistic, IUserRepository userRepository, IStatisticServices statisticServices)
+        public GameHub(GameManager gameManager, IStatisticService statistic, IUserRepository userRepository, IStatisticService   statisticServices)
         {
             _gameManager = gameManager;
             _statisticService = statistic;
@@ -27,61 +31,60 @@ namespace server.Hubs
             _statisticServices = statisticServices;
         }
 
-        // Metoda, kterou volá tvůj frontend přes .invoke("JoinRoom", roomId)
+        /// <summary>
+        /// Connects a client to a specific game room group.
+        /// </summary>
+        /// <param name="roomId">The unique identifier of the game room.</param>
         public async Task JoinRoom(string roomId)
         {
-            // Přidá spojení do logické skupiny SignalR
+            // Adding connection to a SignalR group for targeted broadcasting
             await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
 
             Log.Information($"Client {Context.ConnectionId} joined room: {roomId}");
 
-            // Volitelně informuj ostatní v místnosti
+            // Notify other players in the room
             await Clients.Group(roomId).SendAsync("PlayerJoined", Context.ConnectionId);
         }
 
-        public async Task SendEnergyData(string roomId, double value)
-        {
-            var userEmail = Context.User?.Identity?.Name;
-            if (string.IsNullOrEmpty(userEmail)) return;
-
-            // Získáme surový stav hry (seznam hráčů)
-            var result = _gameManager.HandleMove("energybattle", roomId, userEmail, value);
-
-            if (result != null)
-            {
-                await Clients.Group(roomId).SendAsync("ReceiveGameState", result);
-            }
-        }
-
+        /// <summary>
+        /// Cleanup logic when a player disconnects (e.g., stops the game or closes the tab).
+        /// </summary>
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
             Log.Information($"❌ Client disconnected: {Context.ConnectionId}");
+            // Clean up player state in the game manager to prevent "ghost" players
             _gameManager.RemovePlayer(Context.ConnectionId);
             await base.OnDisconnectedAsync(exception);
         }
 
         /// <summary>
-        /// Jednotná metoda pro zpracování herních dat (GSR senzor, pohyby, atd.)
+        /// Receives physiological data (EDA/GSR) from the client and updates the game state.
+        /// This method is the core loop for the biofeedback interaction.
         /// </summary>
+        /// <param name="roomId">Target room ID.</param>
+        /// <param name="gameType">Type of the game (e.g., 'balance', 'energybattle').</param>
+        /// <param name="value">The processed EDA value from the sensor.</param>
         public async Task SendGameData(string roomId, string gameType, double value)
         {
-            // 1. Získáme email z tokenu (to, co máš v logu r@r.cz)
+            // Extracting user identity from the JWT claims
             var userEmail = Context.User?.Identity?.Name;
 
             if (string.IsNullOrEmpty(userEmail) || !Guid.TryParse(roomId, out Guid roomGuid))
                 return;
 
-            
-
-            // 3. Zpracujeme pohyb v paměti (GameManager pracuje se stringem/emailem jako ID)
+            // Process the movement/input in the GameManager (In-memory state management)
             var gameState = _gameManager.HandleMove(gameType, roomId, userEmail, value);
 
             if (gameState != null)
             {
+                // Broadcast the updated state to all players in the room
                 await Clients.Group(roomId).SendAsync("ReceiveGameState", gameState);
             }
         }
 
+        /// <summary>
+        /// Handles specific game actions like firing a cannon in Energy Battle mode.
+        /// </summary>
         public async Task FireCannon(string roomId)
         {
             var userEmail = Context.User?.Identity?.Name;

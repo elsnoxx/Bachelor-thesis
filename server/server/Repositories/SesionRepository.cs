@@ -1,81 +1,92 @@
-﻿using Serilog;
+﻿using Microsoft.EntityFrameworkCore;
 using server.Data;
 using server.Models.DB;
 using server.Repositories.Interfaces;
 
 namespace server.Repositories
 {
-    public class SesionRepository : ISesionRepository
+    /// <summary>
+    /// Implementation of session management logic using Entity Framework Core.
+    /// </summary>
+    public class SessionRepository : ISessionRepository
     {
         private readonly AppDbContext _context;
-        private readonly ILogger<SesionRepository> _logger;
+        private readonly ILogger<SessionRepository> _logger;
 
-        public SesionRepository(AppDbContext context, ILogger<SesionRepository> logger)
+        public SessionRepository(AppDbContext context, ILogger<SessionRepository> logger)
         {
             _context = context;
             _logger = logger;
         }
 
-        public async Task<Guid> GetSesionIdByEmailAndRoomAsync(Guid userId, Guid roomId)
+        /// <summary>
+        /// Optimized query to retrieve only the Guid of an active session.
+        /// </summary>
+        public async Task<Guid> GetSessionIdByUserAndRoomAsync(Guid userId, Guid roomId)
         {
-            // Použijeme FirstOrDefaultAsync(), aby await mohl fungovat
-            var sessionId = _context.Sessions
+            // Use FirstOrDefaultAsync for non-blocking database access
+            var sessionId = await _context.Sessions
                 .Where(s => s.UserId == userId && s.GameRoomId == roomId && s.IsActive)
                 .Select(s => s.Id)
-                .FirstOrDefault();
+                .FirstOrDefaultAsync();
 
-            if (sessionId == null)
+            if (sessionId == Guid.Empty)
             {
-                _logger.LogWarning("Session for user {UserId} in room {RoomId} was not found in database.", userId, roomId);
+                _logger.LogWarning("Active session for user {UserId} in room {RoomId} was not found.", userId, roomId);
             }
 
             return sessionId;
         }
 
-        public async Task<bool> AddUserToSesion(Session session)
+        public async Task<bool> AddUserToSessionAsync(Session session)
         {
             try
             {
-                _context.Sessions.Add(session);
+                await _context.Sessions.AddAsync(session);
                 await _context.SaveChangesAsync();
                 return true;
             }
             catch (Exception ex)
             {
-                Log.Error($"Error adding user to session: {ex}");
+                _logger.LogError(ex, "Failed to add user {UserId} to session in room {RoomId}.", session.UserId, session.GameRoomId);
                 return false;
             }
         }
 
-        public async Task<Session?> GetSesionByIdAsync(Guid sessionId)
+        public async Task<Session?> GetByIdAsync(Guid sessionId)
         {
             return await _context.Sessions.FindAsync(sessionId);
         }
 
-        public async Task DeleteSesionAsync(Session session)
+        public async Task DeleteAsync(Session session)
         {
             _context.Sessions.Remove(session);
             await _context.SaveChangesAsync();
         }
 
-        public async Task<bool> SesionExistsAsync(Guid sessionId)
+        public async Task<bool> ExistsAsync(Guid sessionId)
         {
-            return await _context.Sessions.FindAsync(sessionId) != null;
+            // AnyAsync is faster than FindAsync for simple existence checks
+            return await _context.Sessions.AnyAsync(s => s.Id == sessionId);
         }
 
         public async Task<IEnumerable<Guid>> GetUsersInGameRoomAsync(Guid gameRoomId)
         {
-            return await Task.FromResult(_context.Sessions
+            // Removed Task.FromResult - ToListAsync() is the correct way to handle this
+            return await _context.Sessions
                 .Where(s => s.GameRoomId == gameRoomId)
                 .Select(s => s.UserId)
-                .ToList());
+                .ToListAsync();
         }
 
-        public async Task<bool> RemoveUserFromSesion(Guid userId, Guid gameRoomId)
+        public async Task<bool> RemoveUserFromSessionAsync(Guid userId, Guid gameRoomId)
         {
             try
             {
-                var session = _context.Sessions.FirstOrDefault(s => s.UserId == userId && s.GameRoomId == gameRoomId);
+                // Correctly awaited async lookup
+                var session = await _context.Sessions
+                    .FirstOrDefaultAsync(s => s.UserId == userId && s.GameRoomId == gameRoomId);
+
                 if (session != null)
                 {
                     _context.Sessions.Remove(session);
@@ -86,7 +97,7 @@ namespace server.Repositories
             }
             catch (Exception ex)
             {
-                Log.Error($"Error removing user from session: {ex}");
+                _logger.LogError(ex, "Error while removing user {UserId} from room {RoomId}.", userId, gameRoomId);
                 return false;
             }
         }
