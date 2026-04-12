@@ -1,6 +1,6 @@
 import React from 'react';
 import { Col } from 'react-bootstrap';
-import { BalloonPlayer } from '../balloonsTypes';
+import type { BalloonPlayer } from '../balloonsTypes';
 
 interface PlayerCardProps {
     player: BalloonPlayer | undefined;
