@@ -1,0 +1,77 @@
+@startuml BalloonGame_SequenceDiagram
+title Sekvenční diagram hry Balón
+
+skinparam sequenceArrowThickness 1.5
+skinparam responseMessageBelowArrow true
+skinparam sequenceGroupBorderThickness 1
+skinparam noteBorderThickness 1
+
+actor "Hráč A + Hráč B" as Players
+participant "React Frontend\n(BalloonGame)" as Frontend
+participant "BLE Service\n(Senzor)" as BLE
+participant "SignalR Hub\n(GameHub)" as Hub
+participant "Backend Service\n(BalloonGameService)" as Service
+participant "Game Model\n(BalloonControlGame)" as Model
+database "PostgreSQL\n(via Queue)" as DB
+
+== Inicializace a připojení ==
+
+Players -> Frontend : Otevře místnost (roomId)
+Frontend -> Hub : Connect (with Token)
+Hub -> Hub : Authorize User (JWT)
+Hub --> Frontend : Spojení navázáno
+Frontend -> Hub : JoinRoom(roomId)
+
+== Aktivace biofeedbacku ==
+
+Players -> Frontend : Zahájí párování senzoru
+Frontend -> BLE : Vyhledat zařízení\n(Web Bluetooth API)
+BLE --> Frontend : Dialog pro výběr zařízení
+Players -> BLE : Potvrzení výběru
+BLE --> Frontend : Zařízení připojeno\n(isConnected = true)
+
+== Herní smyčka (Real-time závod) ==
+
+note over Frontend : Interval každých 500 ms\n(pokud isConnected == true)
+
+loop [Každých 500 ms dokud isFinished == false]
+    BLE -> Frontend : Surová hodnota EDA\n(16-bit, 0-65535)
+    Frontend -> Frontend : Normalizace:\nv_norm = (v_raw / 65535) * 1000
+    Frontend -> Hub : SendGameData(roomId, "balloon", v_norm)
+    Hub -> Service : ProcessInput(roomId, email, v_norm)
+
+    alt [První příchod hráče - registrace]
+        Service -> Model : Players.TryAdd(email, new BalloonPlayer)
+    end
+
+    alt [Druhý hráč se připojil – Start hry]
+        Service -> Model : StartTime = DateTime.UtcNow
+        Service -> DB : QueueRoomStatus(InProgress)\n[asynchronně, nečeká]
+    end
+
+    alt [StartTime == null – hra ještě nezačala]
+        Service --> Hub : GetWaitingState()\n{isStarted: false, connectedPlayers: N}
+        Hub --> Frontend : ReceiveGameState(waitingState)
+        Frontend -> Frontend : Zobraz čekací obrazovku\n(N / MaxPlayers)
+    else [StartTime != null – hra běží]
+        Service -> Model : player.Altitude = v_norm
+        Service -> Model : player.DistanceTraveled += 2
+        Service -> Model : player.Progress =\n(DistanceTraveled / 1000) * 100
+        Service -> DB : QueueBioFeedbackAsync(email, roomId, v_norm)
+        Service --> Hub : GetState()\n{altitude, distance, progress, ...}
+        Hub --> Frontend : ReceiveGameState(state)
+        Frontend -> Frontend : Aktualizuj UI:\n- X pozice balónu = progress %\n- Y pozice balónu =\n  (altitude / 1000) * 400 px
+    end
+end
+
+== Konec hry (Vítězství) ==
+
+note over Service : DistanceTraveled >= 1000
+
+Service -> Model : IsFinished = true\nWinnerEmail = player.Email
+Service -> DB : QueueGameResultAsync(context)\n[asynchronně]
+Service --> Hub : GetState()\n{isFinished: true, winner: email}
+Hub --> Frontend : ReceiveGameState(finalState)
+Frontend -> Players : Zobraz GameOverModal\n(Vítěz / Prohra)
+
+@enduml
