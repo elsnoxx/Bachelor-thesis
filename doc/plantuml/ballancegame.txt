@@ -29,38 +29,46 @@ BLE -->> FE : Zařízení připojeno (isConnected = true)
 == Herní smyčka (Kooperativní balancování) ==
 
 loop Každou 1 sekundu (pouze pokud isConnected)
-    BLE -> FE : Aktuální GSR hodnota
-    FE -> Hub : SendGameData(roomId, "ballance", value)
-    Hub -> Backend : HandleMove("ballance", roomId, email, value)
-    
-    Backend -> Model : AddValue(playerId, value)
-    note right of Model : Ukládá do historie (Queue)\nposledních 30 hodnot
-    
-    Backend -> DB : QueueBioFeedbackAsync(value)
-    
-    Backend -> Model : GetBallPosition()
-    note right of Model : (Průměr L + Průměr P) / 10
-    
-    alt Pokud se připojil druhý hráč (Start hry)
-        Backend -> Model : GenerateLimits()
+    BLE -> FE : Surová hodnota EDA (16-bit, 0–65535)
+    FE -> FE : Normalizace: v_norm = (v_raw / 65535) * 1000
+
+    FE -> Hub : SendGameData(roomId, "ballance", v_norm)
+    Hub -> Backend : HandleMove("ballance", roomId, email, v_norm)
+
+    alt Druhý hráč se právě připojil (Start hry)
+        Backend -> Model : GenerateLimits()\n(střed C ∈ <25,75>, T_min=C-10, T_max=C+10)
         Backend -> DB : UpdateRoomStatus("InProgress")
     end
 
+    Backend -> Model : AddValue(playerId, v_norm)
+    note right of Model : Posuvné okno\nposledních 30 hodnot
+
+    Backend -> DB : QueueBioFeedbackAsync(v_norm)
+
+    Backend -> Model : GetBallPosition()
+    note right of Model : P = clamp((avg_L + avg_R) / 20, 0, 100)
+
     Backend -> Model : GetRemainingTime()
-    
-    Backend --> Hub : Vrať BallanceGameState
+
+    Backend --> Hub : BallanceGameState
     Hub -> FE : ReceiveGameState(state)
-    FE -> Players : Aktualizace UI (Pozice kuličky, Limity, Čas)
+    FE -> Players : Aktualizace UI\n(pozice kuličky, limity, čas)
 end
 
 == Konec hry (Vítězství / Prohra) ==
 
-alt Kulička mimo limit (0 nebo 100) NEBO Čas vypršel (0s)
+alt P < T_min nebo P > T_max (kulička mimo zónu)
     Backend -> Model : IsGameOver = true
     Backend -> DB : QueueGameResultAsync(stats)
-    Backend --> Hub : ReceiveGameState (isGameOver: true)
+    Backend --> Hub : ReceiveGameState (isGameOver: true, isWin: false)
     Hub -> FE : ReceiveGameState(state)
-    FE -> Players : Zobraz GameOverModal (Vítězství/Prohra)
+    FE -> Players : Zobraz GameOverModal – Prohra
+else t_remaining <= 0 a T_min <= P <= T_max (čas vypršel, kulička v zóně)
+    Backend -> Model : IsGameOver = true
+    Backend -> DB : QueueGameResultAsync(stats)
+    Backend --> Hub : ReceiveGameState (isGameOver: true, isWin: true)
+    Hub -> FE : ReceiveGameState(state)
+    FE -> Players : Zobraz GameOverModal – Vítězství
 end
 
 @enduml

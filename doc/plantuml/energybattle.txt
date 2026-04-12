@@ -30,15 +30,16 @@ BLE -->> FE : Zařízení připojeno (isConnected = true)
 note over FE, BLE : Smyčka běží pouze při isConnected == true
 
 loop Každou 1 sekundu
-    BLE -> FE : Naměřená hodnota GSR
-    
-    FE -> Hub : SendEnergyData(roomId, gsrValue)
-    Hub -> Backend : ProcessInput(roomId, email, value)
-    
-    Backend -> DB : QueueBioFeedbackAsync(value)
-    
-    note over Backend : Výpočet nabíjení energie\n(rozdíl od cíle < tolerance)
-    
+    BLE -> FE : Surová hodnota EDA (16-bit, 0–65535)
+    FE -> FE : Normalizace: v_norm = (v_raw / 65535) * 100
+
+    FE -> Hub : SendEnergyData(roomId, v_norm)
+    Hub -> Backend : ProcessInput(roomId, email, v_norm)
+
+    Backend -> DB : QueueBioFeedbackAsync(v_norm)
+
+    note over Backend : Výpočet ΔE:\npokud |v_norm - T| ≤ 10:\n  ΔE = max(0.5, 5 - diff/2)\njinak: ΔE = 0.1\nEnergy = min(100, Energy + ΔE)
+
     Backend --> Hub : Vrať aktuální stav hry (ReceiveGameState)
     Hub -> FE : ReceiveGameState(data)
     FE -> Player : Aktualizuj UI (Energy bar, Health, Target)
@@ -52,16 +53,16 @@ note right of FE : Povoleno v UI pouze\npokud Energy >= 100
 FE -> Hub : FireCannon(roomId)
 Hub -> Backend : Fire(roomId, shooterEmail)
 
-alt Úspěšný zásah (Server-side validation)
-    Backend -> Backend : Reset Energy (0)
+alt Úspěšný zásah (Server-side validation: Energy >= 100)
+    Backend -> Backend : Reset Energy = 0
     Backend -> Backend : Opponent Health -= 20
-    Backend -> Backend : Vygeneruj nový cílový limit
-    
+    Backend -> Backend : Vygeneruj nový cílový limit T
+
     alt Zdraví soupeře <= 0
         Backend -> Backend : IsFinished = true
         Backend -> DB : SaveFinalGameStats()
     end
-    
+
     Backend --> Hub : Nový stav (ReceiveGameState)
     Hub -> FE : ReceiveGameState(data)
     FE -> Player : Zobraz animaci výstřelu / Game Over
