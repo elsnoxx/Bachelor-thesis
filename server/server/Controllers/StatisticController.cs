@@ -54,14 +54,14 @@ namespace server.Controllers
         /// Calculates baseline vs. peak electrodermal activity.
         /// </summary>
         /// <param name="userEmail">Email address of the user.</param>
-        /// <param name="sessionId">Unique identifier of the game session.</param>
-        /// <returns>Aggregated session summary (average, min, max GSR values).</returns>
-        [HttpGet("biofeedback/{userEmail}/summary/{sessionId}")]
+        /// <param name="statisticId">Unique identifier of the statistic record.</param>
+        /// <returns>Aggregated statistic summary (average, min, max GSR values).</returns>
+        [HttpGet("biofeedback/{userEmail}/summary/{statisticId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetBioSummary(string userEmail, string sesionId)
+        public async Task<IActionResult> GetBioSummary(string userEmail, string statisticId)
         {
-            var summary = await _statisticServices.GetBioSummaryAsync(userEmail, sesionId);
+            var summary = await _statisticServices.GetBioSummaryAsync(userEmail, statisticId);
 
             if (summary == null)
             {

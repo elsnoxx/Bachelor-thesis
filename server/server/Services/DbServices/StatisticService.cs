@@ -93,17 +93,17 @@ namespace server.Services.DbServices
             return await _bioRepo.GetUserStatisticsAsync(user.Id);
         }
 
-        public async Task<DetailBioFeedbackData> GetBioSummaryAsync(string userEmail, string sessionIdString)
+        public async Task<DetailBioFeedbackData> GetBioSummaryAsync(string userEmail, string statisticId)
         {
-            if (!Guid.TryParse(sessionIdString, out Guid sessionGuid))
+            if (!Guid.TryParse(statisticId, out Guid statisticGuid))
                 return new DetailBioFeedbackData();
 
             var user = await _userRepository.GetByEmailAsync(userEmail);
             if (user == null) return new DetailBioFeedbackData();
 
-            var stats = await _statisticRepo.GetGameRoomIdBySessionIdAsync(sessionGuid);
+            var stats = await _statisticRepo.GetByIdAsync(statisticGuid);
             
-            var session = await _sessionRepo.GetByIdAsync(stats);
+            var session = await _sessionRepo.GetByIdAsync(stats.SessionId);
             if (session == null) return new DetailBioFeedbackData();
 
 

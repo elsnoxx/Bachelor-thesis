@@ -30,12 +30,12 @@ namespace server.Services.DbServices.Interfaces
         Task<IEnumerable<BioFeedback>> GetUserBiofeedbackAsync(string userEmail);
 
         /// <summary>
-        /// Generates a detailed analytics report for a specific session, including peak detection and moving averages.
+        /// Generates a detailed analytics report for a specific statistic record, including peak detection and moving averages.
         /// </summary>
-        Task<DetailBioFeedbackData> GetBioSummaryAsync(string userEmail, string sessionId);
+        Task<DetailBioFeedbackData> GetBioSummaryAsync(string userEmail, string statisticId);
 
         /// <summary>
-        /// Calculates basic summary (Min, Max, Avg) for a specific session and user.
+        /// Calculates basic summary (Min, Max, Avg) for a specific statistic record and user.
         /// </summary>
         Task<BioSummary?> GetSessionSummaryAsync(string email, Guid roomId);
     }
