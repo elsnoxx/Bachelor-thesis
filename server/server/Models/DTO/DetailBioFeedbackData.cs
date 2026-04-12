@@ -6,6 +6,8 @@
     /// </summary>
     public class DetailBioFeedbackData
     {
+        public string Title { get; set; }
+        public string Result { get; set; }
         public double AverageGsr { get; set; }
         public double MaxGsr { get; set; }
         public double MinGsr { get; set; }

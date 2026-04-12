@@ -27,6 +27,7 @@ namespace server.Repositories
         {
             return await _context.Statistics
                 .Where(s => s.UserId == userId)
+                .OrderByDescending(s => s.LastPlayed)
                 .ToListAsync();
         }
 

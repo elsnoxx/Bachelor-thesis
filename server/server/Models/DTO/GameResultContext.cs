@@ -10,13 +10,15 @@
         public string LeftPlayerId { get; set; }
         public string RightPlayerId { get; set; }
         public string GameType { get; set; }
+        public string? WinnerPlayerEmail { get; set; }
 
-        public GameResultContext(string roomId, string leftPlayerId, string rightPlayerId, string gameType)
+        public GameResultContext(string roomId, string leftPlayerId, string rightPlayerId, string gameType, string? winnerPlayerEmail)
         {
             RoomId = roomId;
             LeftPlayerId = leftPlayerId;
             RightPlayerId = rightPlayerId;
             GameType = gameType;
+            WinnerPlayerEmail = winnerPlayerEmail;
         }
     }
 }

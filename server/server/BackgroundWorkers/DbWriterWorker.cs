@@ -104,7 +104,8 @@ namespace server.BackgroundWorkers
                             TotalSessions = 1,
                             AverageGsr = summary?.Avg ?? 0,
                             BestScore = summary?.Max ?? 0,
-                            SessionId = sesionId
+                            SessionId = sesionId,
+                            Result = game.WinnerPlayerEmail == email ? "Win" : "Lose"
                         };
 
                         await statisticService.AddStatisticByEmailAsync(email, stats);

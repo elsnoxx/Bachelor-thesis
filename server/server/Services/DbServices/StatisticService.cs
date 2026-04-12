@@ -15,14 +15,16 @@ namespace server.Services.DbServices
         private readonly IUserRepository _userRepository;
         private readonly IBiofeedbackRepository _bioRepo;
         private readonly ISessionRepository _sessionRepo;
+        private readonly IGameRoomRepository _gameRoomRepo;
         private readonly ILogger<StatisticService> _logger;
 
-        public StatisticService(IStatisticRepository statisticRepo, IBiofeedbackRepository bioRepo, IUserRepository userRepository, ILogger<StatisticService> logger, ISessionRepository sesionRepository)
+        public StatisticService(IStatisticRepository statisticRepo, IBiofeedbackRepository bioRepo, IUserRepository userRepository, ILogger<StatisticService> logger, ISessionRepository sesionRepository, IGameRoomRepository gameRoomRepo)
         {
             _statisticRepo = statisticRepo;
             _bioRepo = bioRepo;
             _userRepository = userRepository;
             _logger = logger;
+            _gameRoomRepo = gameRoomRepo;
             _sessionRepo = sesionRepository;
         }
 
@@ -40,7 +42,8 @@ namespace server.Services.DbServices
                     BestScore = statistic.BestScore,
                     TotalSessions = statistic.TotalSessions,
                     LastPlayed = statistic.LastPlayed,
-                    SessionId = statistic.SessionId
+                    SessionId = statistic.SessionId,
+                    Result = statistic.Result,
                 };
                 await _statisticRepo.AddAsync(stats);
             }
@@ -106,6 +109,8 @@ namespace server.Services.DbServices
             var session = await _sessionRepo.GetByIdAsync(stats.SessionId);
             if (session == null) return new DetailBioFeedbackData();
 
+            var gameroom = await _gameRoomRepo.GetByIdAsync(session.GameRoomId);
+
 
             var allUserBioData = await _bioRepo.GetUserStatisticsAsync(user.Id);
 
@@ -157,6 +162,8 @@ namespace server.Services.DbServices
 
             return new DetailBioFeedbackData
             {
+                Title = $"Session {gameroom.Name} - {session.StartTime:dd.MM.yyyy HH:mm}",
+                Result = stats.Result,
                 AverageGsr = Math.Round(values.Average(), 2),
                 MaxGsr = values.Max(),
                 MinGsr = values.Min(),
