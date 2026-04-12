@@ -12,7 +12,7 @@ Kompletní dokumentace k bakalářské práci zahrnující technické specifikac
 ### Herní mechaniky
 - [**Balance Game**](games/BallanceChallenge.md) - hra na udržení GSR stability
 - [**Energy Battle**](games/EnergyBattel.md) - real-time GSR souboj
-- [**Ludo**](games/LUDO.md) - tahová strategie s biofeedback ovládáním
+- [**Balloon Race**](games/BalloonRace.md) - tahová strategie s biofeedback ovládáním
 
 ### Technická dokumentace
 - [**Tech Stack & Deployment**](TechnicalSpec/README.md) - použité technologie a spuštění
