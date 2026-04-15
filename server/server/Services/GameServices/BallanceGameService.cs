@@ -19,24 +19,22 @@ namespace server.Services.GameServices
 
             if (string.IsNullOrEmpty(game.LeftPlayerId))
                 game.LeftPlayerId = playerId;
+
             else if (string.IsNullOrEmpty(game.RightPlayerId) && game.LeftPlayerId != playerId)
                 game.RightPlayerId = playerId;
 
-            if (game.StartTime == null
-                && !string.IsNullOrEmpty(game.LeftPlayerId)
-                && !string.IsNullOrEmpty(game.RightPlayerId))
+            if (game.StartTime == null && !string.IsNullOrEmpty(game.LeftPlayerId) && !string.IsNullOrEmpty(game.RightPlayerId))
             {
                 game.StartTime = DateTime.UtcNow;
                 game.GenerateLimits();
-                Log.Information("[GAME START] Room: {RoomId}, Players: {P1} vs {P2}",
-                    roomId, game.LeftPlayerId, game.RightPlayerId);
-                NotifyRoomStatus(roomId, RoomStatus.Start);           // <-- base method
+                Log.Information("[GAME START] Room: {RoomId}, Players: {P1} vs {P2}", roomId, game.LeftPlayerId, game.RightPlayerId);
+                NotifyRoomStatus(roomId, RoomStatus.Start);
             }
 
             if (game.StartTime != null)
             {
                 game.AddValue(playerId, value);
-                SaveBioFeedback(playerId, roomId, value);              // <-- base method
+                SaveBioFeedback(playerId, roomId, value);
             }
 
             int remaining = game.GetRemainingTime();
@@ -46,8 +44,7 @@ namespace server.Services.GameServices
                 if (!game.WasSaved)
                 {
                     game.WasSaved = true;
-                    SaveGameResult(game.RoomId, game.LeftPlayerId,     // <-- base method
-                        game.RightPlayerId, "ballance", playerId);
+                    SaveGameResult(game.RoomId, game.LeftPlayerId, game.RightPlayerId, "ballance", playerId);
                 }
 
                 double ballPos = game.GetBallPosition();
@@ -87,6 +84,5 @@ namespace server.Services.GameServices
 
         public void RemoveRoom(string roomId) => RemoveGame(roomId);  // <-- base method
 
-        public Dictionary<string, double> GetScores() => new();
     }
 }

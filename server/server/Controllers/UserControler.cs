@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.VisualBasic;
 using Serilog;
+using server.Constants;
 using server.Models.DB;
 using server.Services.DbServices.Interfaces;
 
@@ -38,10 +39,10 @@ namespace server.Controllers
                 var users = await _userDbServices.GetAllAsync();
                 return Ok(users);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
-                throw;
+                Log.Error(ex, ErrorMessages.InternalServerError);
+                return StatusCode(500, ErrorMessages.InternalServerError);
             }
         }
 
@@ -54,12 +55,21 @@ namespace server.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetUserById(Guid id)
         {
-            var user = await _userDbServices.GetByIdAsync(id);
-            if (user == null)
+            try
             {
-                return NotFound();
+                var user = await _userDbServices.GetByIdAsync(id);
+                if (user == null)
+                {
+                    return NotFound();
+                }
+                return Ok(user);
             }
-            return Ok(user);
+            catch (Exception ex)
+            {
+                Log.Error(ex, ErrorMessages.InternalServerError);
+                return StatusCode(500, ErrorMessages.InternalServerError);
+            }
+            
         }
 
         /// <summary>
@@ -75,16 +85,25 @@ namespace server.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> UploadAvatar(Guid userId, IFormFile avatarFile)
         {
-            if (avatarFile == null || avatarFile.Length == 0)
+            try
             {
-                return BadRequest("No file uploaded.");
+                if (avatarFile == null || avatarFile.Length == 0)
+                {
+                    return BadRequest("No file uploaded.");
+                }
+                var result = await _userDbServices.UploadAvatarAsync(userId, avatarFile);
+                if (!result.Success)
+                {
+                    return BadRequest(result.Data);
+                }
+                return Ok("Avatar uploaded successfully.");
             }
-            var result = await _userDbServices.UploadAvatarAsync(userId, avatarFile);
-            if (!result.Success)
+            catch (Exception ex)
             {
-                return BadRequest(result.Data);
+                Log.Error(ex, ErrorMessages.InternalServerError);
+                return StatusCode(500, ErrorMessages.InternalServerError);
             }
-            return Ok("Avatar uploaded successfully.");
+            
         }
     }
 }

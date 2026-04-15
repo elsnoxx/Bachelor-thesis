@@ -16,12 +16,12 @@ namespace server.Services.DbServices.Interfaces
         /// <summary>
         /// Gets profiles of all users currently waiting or playing in a specific room.
         /// </summary>
-        Task<Result<IEnumerable<UserDTO>>> GetUsersInGameRoomAsync(Guid gameRoomId);
+        Task<Result<IEnumerable<UserDto>>> GetUsersInGameRoomAsync(Guid gameRoomId);
 
         /// <summary>
         /// Initializes a new game room with security settings (password) and capacity limits.
         /// </summary>
-        Task<Result<bool>> CreateGameRoomAsync(GameRoomCreationDTO gameRoomDTO);
+        Task<Result<bool>> CreateGameRoomAsync(GameRoomCreationDto gameRoomDTO);
 
         /// <summary>
         /// Validates entry requirements (password, capacity) and connects a user to a room.

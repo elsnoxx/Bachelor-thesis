@@ -19,16 +19,10 @@ namespace server.Hubs
     public class GameHub : Hub
     {
         private readonly GameManager _gameManager;
-        private readonly IStatisticService _statisticService;
-        private readonly IUserRepository _userRepository;
-        private readonly IStatisticService _statisticServices;
 
-        public GameHub(GameManager gameManager, IStatisticService statistic, IUserRepository userRepository, IStatisticService   statisticServices)
+        public GameHub(GameManager gameManager)
         {
             _gameManager = gameManager;
-            _statisticService = statistic;
-            _userRepository = userRepository;
-            _statisticServices = statisticServices;
         }
 
         /// <summary>
@@ -40,7 +34,7 @@ namespace server.Hubs
             // Adding connection to a SignalR group for targeted broadcasting
             await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
 
-            Log.Information($"Client {Context.ConnectionId} joined room: {roomId}");
+            Log.Information("Client {ConnectionId} joined room: {RoomId}", Context.ConnectionId, roomId);
 
             // Notify other players in the room
             await Clients.Group(roomId).SendAsync("PlayerJoined", Context.ConnectionId);
@@ -51,7 +45,7 @@ namespace server.Hubs
         /// </summary>
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            Log.Information($"❌ Client disconnected: {Context.ConnectionId}");
+            Log.Information("❌ Client disconnected: {ConnectionId}", Context.ConnectionId);
             // Clean up player state in the game manager to prevent "ghost" players
             _gameManager.RemovePlayer(Context.ConnectionId);
             await base.OnDisconnectedAsync(exception);
@@ -69,7 +63,7 @@ namespace server.Hubs
             // Extracting user identity from the JWT claims
             var userEmail = Context.User?.Identity?.Name;
 
-            if (string.IsNullOrEmpty(userEmail) || !Guid.TryParse(roomId, out Guid roomGuid))
+            if (string.IsNullOrEmpty(userEmail))
                 return;
 
             // Process the movement/input in the GameManager (In-memory state management)

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using server.Constants;
 using server.Models.Auth;
 using server.Models.DB;
 using server.Services.DbServices.Interfaces;
@@ -69,8 +70,8 @@ namespace server.Controllers
             }
             catch (Exception ex)
             {
-                Log.Error($"Internal server error: {ex}");
-                return StatusCode(500, "Internal server error");
+                Log.Error(ex, ErrorMessages.InternalServerError);
+                return StatusCode(500, ErrorMessages.InternalServerError);
             }
         }
 
@@ -81,18 +82,27 @@ namespace server.Controllers
         [HttpPost("refresh")]
         public async Task<IActionResult> Refresh()
         {
-            if (!Request.Cookies.TryGetValue("refresh_token", out var refreshTokenValue))
+            try
             {
-                return Unauthorized("Missing refresh token cookie");
+                if (!Request.Cookies.TryGetValue("refresh_token", out var refreshTokenValue))
+                {
+                    return Unauthorized("Missing refresh token cookie");
+                }
+
+                var result = await _authDbService.RefreshTokenAsync(refreshTokenValue, HttpContext);
+
+                if (result.Success)
+                {
+                    return Ok(new { Token = result.Data.TokenJWT });
+                }
+                return Unauthorized();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, ErrorMessages.InternalServerError);
+                return StatusCode(500, ErrorMessages.InternalServerError);
             }
 
-            var result = await _authDbService.RefreshTokenAsync(refreshTokenValue, HttpContext);
-
-            if (result.Success)
-            {
-                return Ok(new { Token = result.Data.TokenJWT });
-            }
-            return Unauthorized();
         }
 
         /// <summary>
@@ -118,8 +128,8 @@ namespace server.Controllers
             }
             catch (Exception ex)
             {
-                Log.Error($"Internal server error: {ex}");
-                return StatusCode(500, "Internal server error");
+                Log.Error(ex, ErrorMessages.InternalServerError);
+                return StatusCode(500, ErrorMessages.InternalServerError);
             }
         }
 
@@ -148,8 +158,8 @@ namespace server.Controllers
             }
             catch (Exception ex)
             {
-                Log.Error($"Error during password reset: {ex}");
-                return StatusCode(500, "Internal server error");
+                Log.Error(ex, ErrorMessages.InternalServerError);
+                return StatusCode(500, ErrorMessages.InternalServerError);
             }
         }
 
@@ -174,8 +184,8 @@ namespace server.Controllers
             }
             catch (Exception ex)
             {
-                Log.Error($"Internal server error: {ex}");
-                return StatusCode(500, "Internal server error");
+                Log.Error(ex, ErrorMessages.InternalServerError);
+                return StatusCode(500, ErrorMessages.InternalServerError);
             }
         }
     }

@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Microsoft.VisualBasic;
 using Serilog;
+using server.Constants;
 using server.Models;
 using server.Models.DB;
 using server.Models.DTO;
@@ -25,19 +26,19 @@ namespace server.Services.DbServices
             _mapper = mapper;
         }
 
-        public async Task FinishGameRoomAsync(Guid gameroomid)
+        public async Task FinishGameRoomAsync(Guid gameRoomId)
         {
-            var gameRoom = await _gameRoomRepository.GetByIdAsync(gameroomid);
+            var gameRoom = await _gameRoomRepository.GetByIdAsync(gameRoomId);
             if (gameRoom == null)
             {
-                Log.Error("Game Room {RoomId} not found.", gameroomid);
+                Log.Error("Game Room {RoomId} not found.", gameRoomId);
                 return;
             }
             gameRoom.Status = "Finished";
             try
             {
                 await _gameRoomRepository.UpdateAsync(gameRoom);
-                Log.Information("Game room {RoomId} marked as finished", gameroomid);
+                Log.Information("Game room {RoomId} marked as finished", gameRoomId);
             }
             catch (Exception ex)
             {
@@ -45,19 +46,19 @@ namespace server.Services.DbServices
             }
         }
 
-        public async Task StartGameRoomAsync(Guid gameroomid)
+        public async Task StartGameRoomAsync(Guid gameRoomId)
         {
-            var gameRoom = await _gameRoomRepository.GetByIdAsync(gameroomid);
+            var gameRoom = await _gameRoomRepository.GetByIdAsync(gameRoomId);
             if (gameRoom == null)
             {
-                Log.Error("Game Room {RoomId} not found.", gameroomid);
+                Log.Error("Game Room {RoomId} not found.", gameRoomId);
                 return;
             }
             gameRoom.Status = "InProgress";
             try
             {
                 await _gameRoomRepository.UpdateAsync(gameRoom);
-                Log.Information("Game room {RoomId} marked as in progress", gameroomid);
+                Log.Information("Game room {RoomId} marked as in progress", gameRoomId);
             }
             catch (Exception ex)
             {
@@ -84,21 +85,21 @@ namespace server.Services.DbServices
             return Result<IEnumerable<GameRoomDTO>>.Ok(gameRoomsDTO);
         }
 
-        public async Task<Result<IEnumerable<UserDTO>>> GetUsersInGameRoomAsync(Guid gameRoomId)
+        public async Task<Result<IEnumerable<UserDto>>> GetUsersInGameRoomAsync(Guid gameRoomId)
         {
             var checkRoom = await _gameRoomRepository.GetByIdAsync(gameRoomId);
             if (checkRoom == null)
             {
                 Log.Error("Game Room {RoomId} not found.", gameRoomId);
-                return Result<IEnumerable<UserDTO>>.Fail("Game Room not found.");
+                return Result<IEnumerable<UserDto>>.Fail("Game Room not found.");
             }
 
             var users = await _sessionRepository.GetUsersInGameRoomAsync(gameRoomId);
-            var usersDTO = _mapper.Map<IEnumerable<UserDTO>>(users);
-            return Result<IEnumerable<UserDTO>>.Ok(usersDTO);
+            var usersDTO = _mapper.Map<IEnumerable<UserDto>>(users);
+            return Result<IEnumerable<UserDto>>.Ok(usersDTO);
         }
 
-        public async Task<Result<bool>> CreateGameRoomAsync(GameRoomCreationDTO gameRoomDTO)
+        public async Task<Result<bool>> CreateGameRoomAsync(GameRoomCreationDto gameRoomDTO)
         {
             var user = await _userRepository.GetByEmailAsync(gameRoomDTO.UserId);
             var gameRoom = CreateGameRoom(gameRoomDTO, user.Id);
@@ -124,8 +125,8 @@ namespace server.Services.DbServices
                 var gameRoom = await _gameRoomRepository.GetByIdAsync(gameRoomId);
                 if (user == null || gameRoom == null)
                 {
-                    Log.Error("User or Game Room not found.");
-                    return Result<bool>.Fail("User or Game Room not found.");
+                    Log.Error(GameRoomsErrors.GameRoomNotFound);
+                    return Result<bool>.Fail(GameRoomsErrors.GameRoomNotFound);
                 }
 
                 var usersInRoom = await _sessionRepository.GetUsersInGameRoomAsync(gameRoomId);
@@ -136,10 +137,10 @@ namespace server.Services.DbServices
                 }
                 if (usersInRoom.Count() >= gameRoom.MaxPlayers)
                 {
-                    Log.Error("Game Room is full.");    
-                    return Result<bool>.Fail("Game Room is full.");
+                    Log.Error(GameRoomsErrors.GameRoomFull);    
+                    return Result<bool>.Fail(GameRoomsErrors.GameRoomFull);
                 }
-                else if ( usersInRoom.Contains(user.Id) == true )
+                else if ( usersInRoom.Contains(user.Id) )
                 {
                     Log.Error("User already in the Game Room.");
                     return Result<bool>.Fail("User already in the Game Room.");
@@ -188,7 +189,7 @@ namespace server.Services.DbServices
                     return Result<bool>.Fail("User or Game Room not found.");
                 }
                 var usersInRoom = await _sessionRepository.GetUsersInGameRoomAsync(gameRoomId);
-                if (usersInRoom.Contains(user.Id) == false)
+                if (usersInRoom.Contains(user.Id))
                 {
                     Log.Error("User not in the Game Room.");
                     return Result<bool>.Fail("User not in the Game Room.");
@@ -210,7 +211,7 @@ namespace server.Services.DbServices
         }
 
 
-        private GameRoom CreateGameRoom(GameRoomCreationDTO gameRoomDTO, Guid userId)
+        private GameRoom CreateGameRoom(GameRoomCreationDto gameRoomDTO, Guid userId)
         {
             var password = string.IsNullOrWhiteSpace(gameRoomDTO.Password) ? null : gameRoomDTO.Password;
 

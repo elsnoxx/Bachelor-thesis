@@ -20,7 +20,7 @@ using System.Text;
 
 namespace server
 {
-    public class Program
+    public static class Program
     {
         public static void Main(string[] args)
         {
@@ -188,8 +188,6 @@ namespace server
                 var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 
                 dbContext.Database.Migrate();
-
-                // dbContext.Database.EnsureCreated();
 
                 if (!dbContext.Users.Any())
                 {

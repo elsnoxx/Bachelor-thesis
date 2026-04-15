@@ -6,7 +6,7 @@ namespace server.Models.DTO
     /// Data required to initialize and create a new game room.
     /// Includes configuration for game mode and access security.
     /// </summary>
-    public class GameRoomCreationDTO
+    public class GameRoomCreationDto
     {
         /// <summary>
         /// The unique ID of the user who is creating the room (Host).

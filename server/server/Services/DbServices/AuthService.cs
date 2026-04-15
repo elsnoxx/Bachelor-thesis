@@ -22,6 +22,7 @@ using System.Runtime.InteropServices;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using server.Constants;
 
 namespace server.Services.DbServices
 {
@@ -94,8 +95,8 @@ namespace server.Services.DbServices
             }
             catch (Exception ex)
             {
-                Log.Error("Error registering user: {Error}", ex.Message);
-                return Result<bool>.Fail("Internal server error");
+                Log.Error(ex, "Error registering user.");
+                return Result<bool>.Fail(ErrorMessages.InternalServerError);
             }
         }
 
@@ -120,8 +121,8 @@ namespace server.Services.DbServices
             }
             catch (Exception ex)
             {
-                Log.Error("Error confirming email: {Error}", ex.Message);
-                return Result<bool>.Fail("Internal server error");
+                Log.Error(ex, "Error registering user.");
+                return Result<bool>.Fail(ErrorMessages.InternalServerError);
             }
         }
 
@@ -172,7 +173,6 @@ namespace server.Services.DbServices
                 // revert all changes in case of an error
                 await transaction.RollbackAsync();
                 Log.Error(ex, "Error during RegisterLoginAsync");
-                throw; // Propagate the error further
             }
         }
 
@@ -193,7 +193,6 @@ namespace server.Services.DbServices
                 // Revert all changes in case of an error
                 await transaction.RollbackAsync();
                 Log.Error(ex, "Error during NewRefreshToken");
-                throw; // Propagate the error further
             }
 
         }
@@ -205,11 +204,11 @@ namespace server.Services.DbServices
             var smtpPort = int.Parse(_configuration["SMTP_PORT"] ?? "587");
             var smtpUser = _configuration["SMTP_USER"];
             var smtpPass = _configuration["SMTP_PASS"];
-            var serverUrl = _configuration["SERVER_URL"] ?? "https://localhost:7202";
+            var serverUrl = _configuration["SERVER_URL"];
 
             if (string.IsNullOrEmpty(smtpUser) || string.IsNullOrEmpty(smtpPass))
             {
-                throw new Exception("SMTP konfigurace nebyla nalezena v appsettings.json ani v ENV.");
+                throw new InvalidOperationException("SMTP konfigurace není kompletní. Zkontrolujte nastavení SMTP_USER a SMTP_PASS.");
             }
 
             var user = await _userRepository.GetByEmailAsync(email);

@@ -17,7 +17,6 @@ namespace server.Services.DbServices
     {
         private readonly IUserRepository _userRepository;
         private readonly IMapper _mapper;
-        private readonly IWebHostEnvironment _env;
         private readonly FileHelper _fileHelper;
 
         public UserServices(IUserRepository userRepository, IMapper mapper, FileHelper fileHelper)
@@ -27,18 +26,18 @@ namespace server.Services.DbServices
             _fileHelper = fileHelper;
         }
 
-        public async Task<IEnumerable<UserDTO>> GetAllAsync()
+        public async Task<IEnumerable<UserDto>> GetAllAsync()
         {
             var users = await _userRepository.GetAllAsync();
-            var userDtos = _mapper.Map<IEnumerable<UserDTO>>(users);
+            var userDtos = _mapper.Map<IEnumerable<UserDto>>(users);
             return userDtos;
         }
 
-        public async Task<UserDTO?> GetByIdAsync(Guid id)
+        public async Task<UserDto?> GetByIdAsync(Guid id)
         {
             var user =  await _userRepository.GetByIdAsync(id);
             if (user == null) return null;
-            return _mapper.Map<UserDTO>(user);
+            return _mapper.Map<UserDto>(user);
 
         }
 

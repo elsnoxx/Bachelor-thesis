@@ -16,23 +16,25 @@ namespace server.Services.GameServices
 
         private double GenerateNewTarget() => _random.NextDouble() * 80.0 + 20.0;
 
-        public override object? ProcessInput(string roomId, string playerEmail, double value)
+        public override object? ProcessInput(string roomId, string playerId, double value)
         {
             var game = GetOrCreateGame(roomId);
             double toleranceRange = 10.0;
 
-            SaveBioFeedback(playerEmail, roomId, value);
+            SaveBioFeedback(playerId, roomId, value);
 
-            if (!game.Players.ContainsKey(playerEmail))
+            // 1. Zajištění existence hráče
+            if (!game.Players.ContainsKey(playerId))
             {
-                game.Players.TryAdd(playerEmail, new EnergyBattleGame.EnergyBattlePlayer
+                game.Players.TryAdd(playerId, new EnergyBattleGame.EnergyBattlePlayer
                 {
-                    Email = playerEmail,
+                    Email = playerId,
                     TargetBioValue = GenerateNewTarget(),
                     LastTargetChange = DateTime.UtcNow
                 });
             }
 
+            // 2. Start hry při dostatku hráčů
             if (game.StartTime == null && game.Players.Count >= 2)
             {
                 game.StartTime = DateTime.UtcNow;
@@ -40,8 +42,9 @@ namespace server.Services.GameServices
                 NotifyRoomStatus(roomId, RoomStatus.Start);
             }
 
-            if (!game.Players.TryGetValue(playerEmail, out var player)) return null;
+            if (!game.Players.TryGetValue(playerId, out var player)) return null;
 
+            // 3. Logika hry během běhu
             if (game.StartTime != null && !game.IsFinished)
             {
                 if ((DateTime.UtcNow - player.LastTargetChange).TotalSeconds >= 30)
@@ -53,6 +56,15 @@ namespace server.Services.GameServices
                 double difference = Math.Abs(player.TargetBioValue - value);
                 player.Energy = Math.Min(100, player.Energy +
                     (difference <= toleranceRange ? Math.Max(0.5, 5 - (difference / 2)) : 0.1));
+            }
+
+            // 4. Vyřešení zpráv konce hry (oprava S3358)
+            string? endMessage = null;
+            if (game.IsFinished)
+            {
+                endMessage = (game.WinnerEmail == playerId)
+                    ? "Victory! You destroyed the opponent."
+                    : "Defeat! Your base was destroyed.";
             }
 
             return new
@@ -69,9 +81,7 @@ namespace server.Services.GameServices
                         ? Math.Max(0, 30 - (int)(DateTime.UtcNow - p.LastTargetChange).TotalSeconds) : 30
                 }).ToList(),
                 isFinished = game.IsFinished, winner = game.WinnerEmail,
-                endMessage = game.IsFinished
-                    ? (game.WinnerEmail == playerEmail ? "Victory! You destroyed the opponent." : "Defeat! Your base was destroyed.")
-                    : null
+                endMessage = endMessage,
             };
         }
 

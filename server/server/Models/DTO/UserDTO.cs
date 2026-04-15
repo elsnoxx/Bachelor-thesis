@@ -4,7 +4,7 @@
     /// Safe representation of a user profile for public display.
     /// Excludes sensitive data like PasswordHash or RefreshTokens.
     /// </summary>
-    public class UserDTO
+    public class UserDto
     {
         public Guid Id { get; set; }
         public string Email { get; set; }

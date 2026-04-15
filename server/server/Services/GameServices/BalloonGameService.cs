@@ -25,23 +25,23 @@ namespace server.Services.GameServices
             return game;
         }
 
-        public override object? ProcessInput(string roomId, string playerEmail, double value)
+        public override object? ProcessInput(string roomId, string playerId, double value)
         {
-            var game = GetOrCreateGame(roomId);                          // <-- base
+            var game = GetOrCreateGame(roomId);
 
-            if (!game.Players.ContainsKey(playerEmail) && game.Players.Count < game.MaxPlayers)
-                game.Players.TryAdd(playerEmail, new BalloonControlGame.BalloonPlayer { Email = playerEmail });
+            if (!game.Players.ContainsKey(playerId) && game.Players.Count < game.MaxPlayers)
+                game.Players.TryAdd(playerId, new BalloonControlGame.BalloonPlayer { Email = playerId });
 
             if (game.StartTime == null && game.Players.Count >= game.MaxPlayers)
             {
                 game.StartTime = DateTime.UtcNow;
-                NotifyRoomStatus(roomId, RoomStatus.Start);              // <-- base
+                NotifyRoomStatus(roomId, RoomStatus.Start);
             }
 
             if (game.StartTime == null)
                 return GetWaitingState(game);
 
-            if (!game.Players.TryGetValue(playerEmail, out var player) || game.IsFinished)
+            if (!game.Players.TryGetValue(playerId, out var player) || game.IsFinished)
                 return GetState(game);
 
             player.Altitude = value;
@@ -55,11 +55,10 @@ namespace server.Services.GameServices
                 game.EndReason = $"Player {player.Email.Split('@')[0]} reached the finish line first!";
 
                 var ids = game.Players.Keys.ToList();
-                SaveGameResult(game.RoomId, ids.FirstOrDefault(),        // <-- base
-                    ids.Skip(1).FirstOrDefault(), "balloon", playerEmail);
+                SaveGameResult(game.RoomId, ids.FirstOrDefault(), ids.Skip(1).FirstOrDefault(), "balloon", playerId);
             }
 
-            SaveBioFeedback(playerEmail, roomId, value);                 // <-- base
+            SaveBioFeedback(playerId, roomId, value);
             return GetState(game);
         }
 

@@ -10,7 +10,6 @@ namespace server.Services.GameServices
         private readonly Dictionary<string, Player> _connectedPlayers = new();
         private readonly Dictionary<string, HashSet<string>> _gameRooms = new();
         private readonly Dictionary<string, IGameService> _gameServices = new();
-        private readonly Dictionary<string, string> _roomToGameType = new();
 
         private readonly EnergyBattleGameServices _energyService;
 

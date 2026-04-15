@@ -31,7 +31,7 @@ namespace server.Services.DbServices
         public async Task AddStatisticByEmailAsync(string email, Statistic statistic)
         {
             var user = await _userRepository.GetByEmailAsync(email);
-            _logger.LogInformation("Adding statistic for user {Email} with game type {GameType}, user id is {userId}", email, statistic.GameType, user.Id);
+            _logger.LogInformation("Adding statistic for user {Email} with game type {GameType}, user id is {UserId}", email, statistic.GameType, user.Id);
             if (user != null)
             {
                 var stats = new Statistic
@@ -61,9 +61,9 @@ namespace server.Services.DbServices
 
             return new BioSummary
             {
-                Avg = (float)records.Average(b => b.GsrValue),
-                Min = (float)records.Min(b => b.GsrValue),
-                Max = (float)records.Max(b => b.GsrValue)
+                Avg = records.Average(b => b.GsrValue),
+                Min = records.Min(b => b.GsrValue),
+                Max = records.Max(b => b.GsrValue)
             };
         }
 
@@ -143,13 +143,10 @@ namespace server.Services.DbServices
                 double smoothedValue = window.Average();
 
                 bool isPeak = false;
-                if (i > 0 && i < rawData.Count - 1)
+                if (i > 0 && i < rawData.Count - 1 && values[i] > values[i - 1] && values[i] > values[i + 1] && values[i] > threshold)
                 {
-                    if (values[i] > values[i - 1] && values[i] > values[i + 1] && values[i] > threshold)
-                    {
-                        isPeak = true;
-                        peaks++;
-                    }
+                    isPeak = true;
+                    peaks++;
                 }
 
                 chartData.Add(new BioPoint

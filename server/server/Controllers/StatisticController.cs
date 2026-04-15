@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Serilog;
+using server.Constants;
 using server.Models.DB;
 using server.Services.DbServices.Interfaces;
 
@@ -31,8 +33,17 @@ namespace server.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetUserStatistics(string userEmail)
         {
-            var stats = await _statisticServices.GetUserStatsAsync(userEmail);
-            return Ok(stats);
+            try
+            {
+                var stats = await _statisticServices.GetUserStatsAsync(userEmail);
+                return Ok(stats);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, ErrorMessages.InternalServerError);
+                return StatusCode(500, ErrorMessages.InternalServerError);
+            }
+            
         }
 
         /// <summary>
@@ -45,8 +56,17 @@ namespace server.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetUserBiofeedback(string userEmail)
         {
-            var data = await _statisticServices.GetUserBiofeedbackAsync(userEmail);
-            return Ok(data);
+            try
+            {
+                var data = await _statisticServices.GetUserBiofeedbackAsync(userEmail);
+                return Ok(data);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, ErrorMessages.InternalServerError);
+                return StatusCode(500, ErrorMessages.InternalServerError);
+            }
+            
         }
 
         /// <summary>
@@ -61,14 +81,23 @@ namespace server.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetBioSummary(string userEmail, string statisticId)
         {
-            var summary = await _statisticServices.GetBioSummaryAsync(userEmail, statisticId);
-
-            if (summary == null)
+            try
             {
-                return NotFound("Session statistics not found.");
-            }
+                var summary = await _statisticServices.GetBioSummaryAsync(userEmail, statisticId);
 
-            return Ok(summary);
+                if (summary == null)
+                {
+                    return NotFound("Session statistics not found.");
+                }
+
+                return Ok(summary);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, ErrorMessages.InternalServerError);
+                return StatusCode(500, ErrorMessages.InternalServerError);
+            }
+            
         }
     }
 }

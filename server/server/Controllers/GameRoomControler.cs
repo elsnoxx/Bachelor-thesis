@@ -2,6 +2,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.VisualBasic;
 using Org.BouncyCastle.Utilities;
+using Serilog;
+using server.Constants;
+using server.Models.Auth;
 using server.Models.DTO;
 using server.Services.DbServices.Interfaces;
 using System.Security.AccessControl;
@@ -33,8 +36,17 @@ namespace server.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAllGameRooms([FromQuery] string gameType)
         {
-            var gameRooms = await _gameRoomService.GetGameRoomsListAsync(gameType);
-            return Ok(gameRooms);
+            try
+            {
+                var gameRooms = await _gameRoomService.GetGameRoomsListAsync(gameType);
+                return Ok(gameRooms);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, ErrorMessages.InternalServerError);
+                return StatusCode(500, ErrorMessages.InternalServerError);
+            }
+            
         }
 
         /// <summary>
@@ -44,14 +56,23 @@ namespace server.Controllers
         [HttpGet("{gameRoomId}/users")]
         public async Task<IActionResult> GetUsersInGameRoom(Guid gameRoomId)
         {
-            var users = await _gameRoomService.GetUsersInGameRoomAsync(gameRoomId);
-
-            if (!users.Success)
+            try
             {
-                return BadRequest(users.Data);
-            }
+                var users = await _gameRoomService.GetUsersInGameRoomAsync(gameRoomId);
 
-            return Ok();
+                if (!users.Success)
+                {
+                    return BadRequest(users.Data);
+                }
+
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, ErrorMessages.InternalServerError);
+                return StatusCode(500, ErrorMessages.InternalServerError);
+            }
+            
         }
 
 
@@ -62,19 +83,28 @@ namespace server.Controllers
         /// <response code="200">Game room successfully created.</response>
         /// <response code="400">Invalid input data or creation failed.</response>
         [HttpPost]
-        public async Task<IActionResult> CreateGameRooms([FromBody] GameRoomCreationDTO gameRoom)
+        public async Task<IActionResult> CreateGameRooms([FromBody] GameRoomCreationDto gameRoom)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest("Invalid user data");
             }
 
-            var result = await _gameRoomService.CreateGameRoomAsync(gameRoom);
-            if (!result.Success)
+            try
             {
-                return BadRequest(result.Data);
+                var result = await _gameRoomService.CreateGameRoomAsync(gameRoom);
+                if (!result.Success)
+                {
+                    return BadRequest(result.Data);
+                }
+                return Ok("You try create game room");
             }
-            return Ok("You try create game room");
+            catch (Exception ex)
+            {
+                Log.Error(ex, ErrorMessages.InternalServerError);
+                return StatusCode(500, ErrorMessages.InternalServerError);
+            }
+            
         }
 
         /// <summary>
@@ -90,14 +120,22 @@ namespace server.Controllers
                 return BadRequest("Invalid user data");
             }
 
-            var result = await _gameRoomService.JoinGameRoomAsync(GameRoomId, request);
-
-            if (!result.Success)
+            try
             {
-                return BadRequest($"User already in the Game Room.");
-            }
+                var result = await _gameRoomService.JoinGameRoomAsync(GameRoomId, request);
 
-            return Ok($"You join room no. {GameRoomId}");
+                if (!result.Success)
+                {
+                    return BadRequest($"User already in the Game Room.");
+                }
+
+                return Ok($"You join room no. {GameRoomId}");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, ErrorMessages.InternalServerError);
+                return StatusCode(500, ErrorMessages.InternalServerError);
+            }
         }
 
         /// <summary>
@@ -113,14 +151,22 @@ namespace server.Controllers
                 return BadRequest("Invalid user data");
             }
 
-            var result = await _gameRoomService.LeaveGameRoomAsync(id, request); 
-
-            if (!result.Success)
+            try
             {
-                return BadRequest(result.Data);
-            }
+                var result = await _gameRoomService.LeaveGameRoomAsync(id, request);
 
-            return Ok($"You leave romm no. {id}");
+                if (!result.Success)
+                {
+                    return BadRequest(result.Data);
+                }
+
+                return Ok($"You leave romm no. {id}");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, ErrorMessages.InternalServerError);
+                return StatusCode(500, ErrorMessages.InternalServerError);
+            }
         }
 
         /// <summary>
@@ -131,7 +177,16 @@ namespace server.Controllers
         [HttpPost("{id}/start")]
         public async Task<IActionResult> StartGameRoom(Guid id, [FromBody] JoinRoomRequest request)
         {
-            return Ok($"Hello you try to start romm {id}");
+            try
+            {
+                return Ok($"Hello you try to start romm {id}");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, ErrorMessages.InternalServerError);
+                return StatusCode(500, ErrorMessages.InternalServerError);
+            }
+            
         }
     }
 }
