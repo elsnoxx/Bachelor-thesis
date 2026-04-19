@@ -18,6 +18,10 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    if (originalRequest.url.includes('/login')) {
+      return Promise.reject(error);
+    }
+
     // 1. ADDED CHECK: If the refresh request itself fails, don't try it again and immediately log out
     if (originalRequest.url.includes('/refresh')) {
         localStorage.clear();
