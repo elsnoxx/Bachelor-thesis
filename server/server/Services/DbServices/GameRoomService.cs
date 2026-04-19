@@ -189,7 +189,7 @@ namespace server.Services.DbServices
                     return Result<bool>.Fail("User or Game Room not found.");
                 }
                 var usersInRoom = await _sessionRepository.GetUsersInGameRoomAsync(gameRoomId);
-                if (usersInRoom.Contains(user.Id))
+                if (!usersInRoom.Contains(user.Id))
                 {
                     Log.Error("User not in the Game Room.");
                     return Result<bool>.Fail("User not in the Game Room.");
