@@ -14,7 +14,7 @@ namespace server.Mapping
         public MappingProfile()
         {
             // Map User entity to UserDTO for public profile viewing or identification
-            CreateMap<User, UserDTO>();
+            CreateMap<User, UserDto>();
 
             // Map GameRoom entity to GameRoomDTO to provide a simplified view of active games
             // This prevents exposing internal properties like Creator reference or Session lists if not needed
