@@ -7,7 +7,7 @@ import { useBle } from "../../../services/BleProvider";
 import { PlayerStatus } from "./components/PlayerStatus";
 import { BattleControls } from "./components/BattleControls";
 import type { GameParticipant, EnergyBattleState } from "./types";
-import { GameOverModal } from "./components/GameOverModal";
+import GameOverModal from "../general/GameOverModal";
 import api from "../../../api/axiosInstance";
 
 
