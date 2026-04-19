@@ -6,7 +6,7 @@ import { useBle } from "../services/BleProvider";
 
 export default function MainPage() {
     // Vytáhneme vše potřebné z kontextu
-    const { isConnected, gsrValue, error, connect, disconnect } = useBle();
+    const { isConnected, gsrValue, batteryLevel, error, connect, disconnect } = useBle();
 
     return (
         <Container className="mt-4 pb-5">
@@ -49,10 +49,17 @@ export default function MainPage() {
                         </Card.Header>
                         <Card.Body className="d-flex flex-column justify-content-center">
                             {isConnected ? (
-                                <div>
-                                    <h2 className="display-4 fw-bold text-primary">{gsrValue ?? "--"}</h2>
-                                    <span className="text-muted">μS (GSR)</span>
-                                </div>
+                                <>
+                                    {batteryLevel !== null && (
+                                        <Badge bg="secondary" className="p-2 mb-2">
+                                            🔋 {batteryLevel}%
+                                        </Badge>
+                                    )}
+                                    <div>
+                                        <h2 className="display-4 fw-bold text-primary">{gsrValue ?? "--"}</h2>
+                                        <span className="text-muted">μS (GSR)</span>
+                                    </div>
+                                </>
                             ) : (
                                 <small className="text-muted">Připojte senzor pro zobrazení dat</small>
                             )}

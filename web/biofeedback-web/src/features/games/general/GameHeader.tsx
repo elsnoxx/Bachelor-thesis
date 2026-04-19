@@ -13,8 +13,7 @@ interface GameHeaderProps {
 export default function GameHeader({ gameName, userEmail }: GameHeaderProps) {
     const navigate = useNavigate();
     const { roomId } = useParams<{ roomId: string }>();
-    // Přidána funkce connect z našeho BleProvideru
-    const { isConnected, connect, error } = useBle();
+    const { isConnected, connect, error, batteryLevel, disconnect } = useBle();
     const handleLeave = async () => {
         if (!roomId) return;
         try {
@@ -24,6 +23,11 @@ export default function GameHeader({ gameName, userEmail }: GameHeaderProps) {
             if(gameName == 'balloon') navigate('/games/balloon'); 
         } catch (error) {
             console.error('Chyba při opouštění místnosti:', error);
+        }
+    };
+    const handleDisconnectClick = () => {
+        if (window.confirm('Opravdu odpojit senzor?')) {
+            disconnect();
         }
     };
 
@@ -39,7 +43,6 @@ export default function GameHeader({ gameName, userEmail }: GameHeaderProps) {
                     {/* Zobrazení chyby, pokud se nepodaří připojit */}
                     {error && <small className="text-danger me-2" style={{fontSize: '10px'}}>{error}</small>}
 
-                    {/* DYNAMICKÉ TLAČÍTKO / BADGE */}
                     {!isConnected ? (
                         <Button 
                             variant="primary" 
@@ -50,9 +53,17 @@ export default function GameHeader({ gameName, userEmail }: GameHeaderProps) {
                             <Bluetooth className="me-1" /> Připojit senzor
                         </Button>
                     ) : (
-                        <Badge bg="success" className="p-2">
-                            BLE: ONLINE
-                        </Badge>
+                        <div className="d-flex align-items-center gap-2">
+                            <Badge bg="success" className="p-2">BLE: ONLINE</Badge>
+                            {batteryLevel !== null && (
+                                <Badge bg="secondary" className="p-2">
+                                    🔋 {batteryLevel}%
+                                </Badge>
+                            )}
+                            <Button variant="outline-danger" size="sm" onClick={handleDisconnectClick}>
+                                Odpojit
+                            </Button>
+                        </div>
                     )}
 
                     <div className="vr mx-2 text-white-50" style={{height: '20px'}}></div>

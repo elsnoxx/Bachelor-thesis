@@ -29,3 +29,7 @@ Seznam nedokončených funkcí a plánovaných vylepšení je dostupný v [TODO 
 ## Licence
 
 Tento projekt je licencován pod licencí [MIT](./LICENSE).
+
+Podle všeho celé ovládání je založeno na SCL? Nikoliv na SCR? Ale nikde jsem přesně to ovládání nezachytil, chybí mi tam popis proč a jak, ale SCL se mění pomalu a změna v SCL je zdlouhavá, navíc SCL je ovlivněno teplotou okolí a fyziologií uživatele, jak zajístíte, že jedinec, který má po nasazení hodnotu 45 000 je porovnatelný s jedincem co má po nasazení hodnotu 15 000? Přece jenom změna ze 45000 na 15000 je otázkou spíše desítek minut a nikoliv sekund a pokud je to muž, tak se pravděpodobně nikdy na hodnotu 15 000 nedostane.
+
+Jako on tan biofeedback bude asi fungovat i na SCL, ale pokud muzete hodte tam treba i nejakou metriku, takova smerodatna odchylka bude fungovat asi docela dobre
