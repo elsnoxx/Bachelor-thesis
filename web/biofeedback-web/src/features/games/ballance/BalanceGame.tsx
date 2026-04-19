@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Container, Row, Col, Spinner } from "react-bootstrap";
 import { useParams, useLocation } from "react-router-dom";
 import { HubConnection, HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
@@ -7,6 +7,7 @@ import BalanceArena from "./components/BalancePanet";
 import GameHeader from "../general/GameHeader";
 import GameOverModal from "../general/GameOverModal";
 import api from "../../../api/axiosInstance";
+import { useBle } from "../../../services/BleProvider";
 
 // Definujeme rozhraní pro stav, který nám teď posílá C# server
 interface BallanceGameState {
@@ -23,6 +24,12 @@ interface BallanceGameState {
     targetMax: number;
     targetMinPlayer: number;
     targetMaxPlayer: number;
+    leftScl: number;
+    rightScl: number;
+    leftScr: boolean;
+    rightScr: boolean;
+    isCalibrating: boolean;
+    calibrationTimeLeft: number;
 }
 
 export default function BalanceGame() {
@@ -34,6 +41,7 @@ export default function BalanceGame() {
     const [timeLeft, setTimeLeft] = useState<number>(120);
     const [gameOver, setGameOver] = useState(false);
     const [gameResult, setGameResult] = useState<{ isWin: boolean, reason: string | null } | null>(null);
+    const [gameState, setGameState] = useState<BallanceGameState | null>(null);
 
     // Stavy pro hráče a kuličku (nyní synchronizované se serverem)
     const [leftPlayer, setLeftPlayer] = useState<{ id: string | null, value: number }>({ id: null, value: 500 });
@@ -42,6 +50,18 @@ export default function BalanceGame() {
     const [targetLimits, setTargetLimits] = useState({ min: 40, max: 60 });
     const [playerLimits, setPlayerLimits] = useState({ min: 400, max: 600 });
 
+    const { gsrValue, isConnected } = useBle();
+    const simulatedValueRef = useRef<number>(500);
+
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+    // Audio efekt - hluk narůstá s blížícím se okrajem
+    useEffect(() => {
+        if (!audioRef.current || !gameState) return;
+
+        // Hlasitost od 0 do 1 podle toho, jak moc je kulička v "nebezpečí" (nad targetMax)
+        const dangerLevel = Math.max(0, (gameState.ballPosition / 100));
+        audioRef.current.volume = Math.min(1, dangerLevel);
+    }, [gameState?.ballPosition]);
     // setTimeLeft(state.remainingTime);
 
     const formatTime = (seconds: number) => {
@@ -83,14 +103,14 @@ export default function BalanceGame() {
             .configureLogging(LogLevel.Information)
             .build();
 
-        // POSLOUCHÁME SERVER: Přijímáme kompletní vypočítaný stav
         conn.on("ReceiveGameState", (state: BallanceGameState) => {
+            setGameState(state);
+
             setLeftPlayer({ id: state.leftPlayerId, value: state.leftValue });
             setRightPlayer({ id: state.rightPlayerId, value: state.rightValue });
             setBallPos(state.ballPosition);
             setTimeLeft(state.remainingTime);
 
-            // Synchronizace všech limitů
             if (state.targetMin !== undefined) {
                 // Limity pro arénu (0-100)
                 setTargetLimits({ min: state.targetMin, max: state.targetMax });
@@ -101,48 +121,70 @@ export default function BalanceGame() {
             if (state.isGameOver) {
                 setGameOver(true);
                 setGameResult({
-                    winnerId: state.winnerId ?? null,
-                    reason: state.endReason ?? null
+                    isWin: state.isWin,
+                    reason: state.endReason
                 });
+                console.log("Hra skončila!", state.isWin);
             }
         });
 
         conn.onreconnected((connectionId) => {
-            console.log("SignalR Reconnected. Re-joining room...");
+            console.log("SignalR reconnected:", connectionId, "Re-joining room...");
             if (conn.state === "Connected") {
                 conn.invoke("JoinRoom", roomId).catch(err => console.error("JoinRoom failed:", err));
             }
         });
 
-        conn.start()
-            .then(() => conn.invoke("JoinRoom", roomId))
-            .catch(err => console.error("SignalR Connection Error: ", err));
+        conn.onclose((err) => {
+            console.warn("SignalR closed:", err);
+        });
 
+        const startConnection = async () => {
+            try {
+                await conn.start();
+                console.log("SignalR Connected.");
+                await conn.invoke("JoinRoom", roomId);
+            } catch (err) {
+                console.error("SignalR Connection Error: ", err);
+            }
+        };
+
+        startConnection();
         setConnection(conn);
 
         return () => {
-            conn.stop();
+            conn.stop().catch(() => { });
         };
     }, [roomId]);
 
+
+
     // SIMULACE ODESÍLÁNÍ DAT
     useEffect(() => {
-        if (gameOver || !connection || connection.state !== "Connected") return;
+        if (gameOver || !isConnected) return;
 
-        let simulatedValue = 500; // Výchozí hodnota v mS
         const interval = setInterval(() => {
-            // Simulace reálnějšího pohybu signálu (náhodná procházka)
-            // Hodnota se nemění skokově o 1000, ale postupně +/- 5 jednotek
-            const change = (Math.random() - 0.5) * 10;
-            simulatedValue = Math.max(0, Math.min(1000, simulatedValue + change));
+            let valueToEmit: number;
 
-            connection.invoke("SendGameData", roomId, "ballance", simulatedValue)
-                .catch(err => console.error("Simulace selhala:", err));
+            if (isConnected && gsrValue !== null && gsrValue !== undefined) {
+                // PŘÍPAD A: Senzor je připojen a dává data
+                valueToEmit = gsrValue;
+            } else {
+                // PŘÍPAD B: Senzor není, simulujeme plynulou "náhodnou procházku"
+                // Místo úplně náhodného čísla (0-1000) pohneme stávající hodnotou o kousek
+                const change = (Math.random() - 0.5) * 20;
+                simulatedValueRef.current = Math.max(0, Math.min(1000, simulatedValueRef.current + change));
+                valueToEmit = simulatedValueRef.current;
+            }
+            console.log("Odesílám hodnotu:", valueToEmit);
+            // Odeslání na server
+            connection.invoke("SendGameData", roomId, "ballance", valueToEmit)
+                .catch(err => console.error("Error sending data:", err));
 
-        }, 100);
+        }, 200); // 200ms je pro biofeedback plynulejší než 1000ms
 
         return () => clearInterval(interval);
-    }, [connection, roomId, gameOver]);
+    }, [connection, roomId, gameOver, isConnected, gsrValue]);
 
     const getUserEmail = (): string | null => {
         const userJson = localStorage.getItem('user');
@@ -152,89 +194,102 @@ export default function BalanceGame() {
         return null;
     };
 
-    if (!connection) return <div className="text-center p-5"><Spinner /> Připojování k aréně...</div>;
+    const isConnReady = !!connection && connection.state === "Connected";
+
+    // if (!connection || connection.state !== "Connected")
+    //     return <div className="text-center p-5"><Spinner /> Připojování k aréně...</div>;
 
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
     const currentUserId = currentUser.id;
 
     return (
         <Container fluid className="h-screen py-4">
+            <audio ref={audioRef} src="/sounds/stress_noise.mp3" loop autoPlay />
+
             <GameHeader gameName="ballance" userEmail={getUserEmail()} />
 
-            <Container className="mb-4">
-                <Row className="shadow-sm bg-light rounded p-4 align-items-center">
-                    <h3 className="font-semibold m-0 text-center mb-3">Biofeedback Balance Aréna</h3>
-                    <Col md={8} className="text-start ">
+            {!isConnReady ? (
+                <div className="text-center p-5">
+                    <Spinner /> Připojování k aréně...
+                </div>
+            ) : (
+                <>
+                    {/* sem vlož dosavadní obsah stránky (timery, aréna, panely) */}
+                    <Container className="mb-4">
+                        <Row className="shadow-sm bg-light rounded p-4 align-items-center">
+                            <h3 className="font-semibold m-0 text-center mb-3">Biofeedback Balance Aréna</h3>
+                            <Col md={8} className="text-start ">
 
-                        <div className="d-flex gap-3 align-items-center">
-                            <span className="text-sm text-muted">Místnost: <strong>{roomName ?? roomId}</strong></span>
-                            <small className="text-muted border-start ps-3">
-                                Uklidni se, udržuj střed. Průměr z 30 hodnot.
-                            </small>
-                        </div>
-                    </Col>
+                                <div className="d-flex gap-3 align-items-center">
+                                    <span className="text-sm text-muted">Místnost: <strong>{roomName ?? roomId}</strong></span>
+                                    <small className="text-muted border-start ps-3">
+                                        Uklidni se, udržuj střed. Průměr z 30 hodnot.
+                                    </small>
+                                </div>
+                            </Col>
 
-                    {/* Pravá část: Časovač vedle sebe */}
-                    <Col md={4} className="text-end">
-                        <div className="d-flex align-items-center justify-content-end gap-3">
-                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                                Zbývající čas:
-                            </span>
-                            <span className={`text-4xl font-black transition-colors ${timeLeft < 10 ? 'text-red-500 animate-pulse' : 'text-gray-800'}`}>
-                                {formatTime(timeLeft)}
-                            </span>
-                        </div>
-                    </Col>
-                </Row>
-            </Container>
+                            {/* Pravá část: Časovač vedle sebe */}
+                            <Col md={4} className="text-end">
+                                <div className="d-flex align-items-center justify-content-end gap-3">
+                                    {gameState?.isCalibrating ? (
+                                        <>
+                                            <span className="text-xs font-bold text-primary uppercase">Kalibrace (buďte v klidu):</span>
+                                            <span className="text-4xl font-black text-primary">
+                                                {gameState.calibrationTimeLeft}s
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="text-xs font-bold text-gray-400 uppercase">Zbývající čas:</span>
+                                            <span className={`text-4xl font-black ${timeLeft < 10 ? 'text-red-500 animate-pulse' : 'text-gray-800'}`}>
+                                                {formatTime(timeLeft)}
+                                            </span>
+                                        </>
+                                    )}
+                                </div>
+                            </Col>
+                        </Row>
+                    </Container>
 
+                    <Row className="mt-4">
+                        <Col md={3}>
+                            <PlayerPanel
+                                value={gameState?.leftScl ?? 0}
+                                label="Hráč (L)"
+                                isCalibrating={gameState?.isCalibrating}
+                                showFlash={gameState?.leftScr}
+                                max={300} // Relativní stupnice
+                            />
+                        </Col>
 
+                        <Col md={6}>
+                            <BalanceArena
+                                ballPos={gameState?.ballPosition}
+                                targetMin={0}
+                                targetMax={gameState?.targetMax ?? 30}
+                                isCalibrating={gameState?.isCalibrating}
+                            />
+                        </Col>
 
+                        <Col md={3}>
+                            <PlayerPanel
+                                value={gameState?.rightScl ?? 0}
+                                label="Hráč (P)"
+                                isCalibrating={gameState?.isCalibrating}
+                                showFlash={gameState?.rightScr}
+                                max={300}
+                            />
+                        </Col>
+                    </Row>
 
-            <Row className="mb-4 align-items-stretch">
-                {/* Hráč 1 (Levý) */}
-                <Col md={3}>
-                    <PlayerPanel
-                        value={leftPlayer.value}
-                        label={leftPlayer.id ? `Hráč (L)` : "Čekání na hráče..."}
-                        targetMin={playerLimits.min}
-                        targetMax={playerLimits.max}
-                        recentMin={0}
-                        recentMax={1000}
+                    <GameOverModal
+                        show={gameOver}
+                        result={gameResult}
+                        currentPlayerId={currentUserId}
+                        onRetry={() => window.location.href = '/games/balance'}
                     />
-                </Col>
-
-                {/* Centrální aréna */}
-                <Col md={6}>
-                    <BalanceArena
-                        leftValue={leftPlayer.value}
-                        rightValue={rightPlayer.value}
-                        ballPos={ballPos}
-                        targetMin={playerLimits.min}
-                        targetMax={playerLimits.max}
-                        min={0}
-                        max={1000}
-                    />
-                </Col>
-
-                {/* Hráč 2 (Pravý) */}
-                <Col md={3}>
-                    <PlayerPanel
-                        value={rightPlayer.value}
-                        label={rightPlayer.id ? `Hráč (P)` : "Volné místo"}
-                        targetMin={playerLimits.min}
-                        targetMax={playerLimits.max}
-                        recentMin={0}
-                        recentMax={1000}
-                    />
-                </Col>
-            </Row>
-            <GameOverModal
-                show={gameOver}
-                result={gameResult}
-                currentPlayerId={currentUserId}
-                onRetry={() => window.location.href = '/games/balance'}
-            />
+                </>
+            )}
         </Container>
     );
 }

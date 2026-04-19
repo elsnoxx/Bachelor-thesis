@@ -9,91 +9,181 @@ namespace server.Models.Games
         public string RoomId { get; set; }
         public string LeftPlayerId { get; set; }
         public string RightPlayerId { get; set; }
+
+        // --- Kalibrace ---
+        private const int CalibrationDurationSeconds = 10;
+        private bool IsCalibrating => StartTime.HasValue && (DateTime.UtcNow - StartTime.Value).TotalSeconds < CalibrationDurationSeconds;
+        private double _leftBaseline = 0;
+        private double _rightBaseline = 0;
+
         public bool WasSaved { get; set; } = false;
-        public double TargetMinPlayer { get; set; }
-        public double TargetMaxPlayer { get; set; }
-        public bool LimitsGenerated { get; set; } = false;
-        public double TargetMin { get; set; }
         public double TargetMax { get; set; }
-        public double TargetWidth { get; set; } = 20.0;
+        // Startovní šířka zóny (50 % je fér pro začátek)
+        public double TargetWidth { get; set; } = 50.0;
 
         public DateTime? StartTime { get; set; }
         public int DurationSeconds { get; set; } = 120;
 
-        // Fronty pro ukládání historie hodnot
+        private double _scrPenalty = 0;
+        private double _lastValueLeft = 0;
+        private double _lastValueRight = 0;
+
+        // Zvětšená historie pro lepší filtraci šumu (podle tvé DP o filtraci signálu)
         private readonly Queue<double> _leftHistory = new();
         private readonly Queue<double> _rightHistory = new();
-        private const int MaxHistory = 30;
+        private const int MaxHistory = 50;
 
-        // Veřejné vlastnosti vrací průměr z historie (nebo 500, pokud historie zeje prázdnotou)
-        public double LeftValue => _leftHistory.Any() ? _leftHistory.Average() : 500;
-        public double RightValue => _rightHistory.Any() ? _rightHistory.Average() : 500;
+        // Zprůměrované hodnoty (SCL)
+        public double LeftValue => _leftHistory.Any() ? _leftHistory.Average() : 0;
+        public double RightValue => _rightHistory.Any() ? _rightHistory.Average() : 0;
 
-        public bool IsGameOver => GetBallPosition() <= 0 || GetBallPosition() >= 100 || GetRemainingTime() <= 0;
+        public int GetCalibrationRemaining()
+        {
+            if (!StartTime.HasValue) return CalibrationDurationSeconds;
+            var elapsed = (DateTime.UtcNow - StartTime.Value).TotalSeconds;
+            return Math.Max(0, CalibrationDurationSeconds - (int)elapsed);
+        }
 
-        /// <summary>
-        /// Přidá novou hodnotu pro konkrétního hráče a udrží historii na 30 prvcích.
-        /// </summary>
+        public bool IsGameOver
+        {
+            get
+            {
+                // PŘIDÁNO: Pokud hra ještě nezačala (není StartTime), nemůže být konec hry
+                if (!StartTime.HasValue) return false;
+
+                if (IsCalibrating) return false;
+
+                // Tady už je bezpečné volat .Value, protože jsme prošli kontrolou výše
+                //var secondsSinceStart = (DateTime.UtcNow - StartTime.Value).TotalSeconds;
+                //bool gracePeriodOver = secondsSinceStart > (CalibrationDurationSeconds + 2);
+
+                //if (gracePeriodOver && GetBallPosition() >= TargetMax) return true;
+                if (GetRemainingTime() <= 0) return true;
+
+                return false;
+            }
+        }
+
         public void AddValue(string playerId, double value)
         {
             if (playerId == LeftPlayerId)
             {
+                // Detekce SCR (stresového píku) - v DP uvádíš rychlý nárůst
+                // Hodnota 100 je pro tvůj rozsah (4000-8000) citlivější práh
+                if (!IsCalibrating && _lastValueLeft > 0 && (value - _lastValueLeft) > 100)
+                {
+                    _scrPenalty += 15;
+                }
+                _lastValueLeft = value;
                 UpdateQueue(_leftHistory, value);
             }
             else if (playerId == RightPlayerId)
             {
+                if (!IsCalibrating && _lastValueRight > 0 && (value - _lastValueRight) > 100)
+                {
+                    _scrPenalty += 15;
+                }
+                _lastValueRight = value;
                 UpdateQueue(_rightHistory, value);
+            }
+
+            // Fixace baseline ihned po kalibraci
+            if (StartTime.HasValue && !IsCalibrating && _leftBaseline == 0)
+            {
+                if (_leftHistory.Count > 10 && _rightHistory.Count > 10)
+                {
+                    _leftBaseline = _leftHistory.Min();
+                    _rightBaseline = _rightHistory.Min();
+                    GenerateLimits();
+                }
+            }
+
+            if (!IsCalibrating)
+            {
+                UpdateTargetZone();
+                // Pomalejší vyprchání stresu (zklidnění trvá déle, viz DP str. 21)
+                _scrPenalty *= 0.97;
             }
         }
 
         private void UpdateQueue(Queue<double> queue, double value)
         {
             queue.Enqueue(value);
-            if (queue.Count > MaxHistory)
-            {
-                queue.Dequeue();
-            }
+            if (queue.Count > MaxHistory) queue.Dequeue();
         }
 
-        // Výpočet pozice kuličky (0-100) z průměrovaných hodnot
         public double GetBallPosition()
         {
-            // 1. Získá průměry posledních 30 hodnot obou hráčů (GSR senzory)
-            double combined = (LeftValue + RightValue) / 2;
+            if (IsCalibrating || _leftBaseline == 0) return 0;
 
-            // 2. Transformuje hodnotu na stupnici 0-100 (vydělením 10.0)
-            // 3. Math.Clamp zajistí, že hodnota nikdy "nevyletí" mimo rozsah 0 a 100
-            return Math.Clamp(combined / 10.0, 0, 100);
+            // SCL: Odchylka od klidového stavu
+            double leftDiff = Math.Max(0, LeftValue - _leftBaseline);
+            double rightDiff = Math.Max(0, RightValue - _rightBaseline);
+
+            // CITLIVOST: Pro rozsah 4000-8000 je hodnota 40.0 ideální.
+            // Znamená to, že nárůst o 2000 jednotek (např. z 5000 na 7000) = 50 % posun.
+            double sensitivity = 40.0;
+            double sclBase = Math.Max(leftDiff, rightDiff) / sensitivity;
+
+            return Math.Clamp(sclBase + _scrPenalty, 0, 100);
         }
 
         public int GetRemainingTime()
         {
             if (!StartTime.HasValue) return DurationSeconds;
             var elapsed = (DateTime.UtcNow - StartTime.Value).TotalSeconds;
-            var remaining = DurationSeconds - (int)elapsed;
-            return Math.Max(0, remaining);
+            if (elapsed < CalibrationDurationSeconds) return DurationSeconds;
+            return Math.Max(0, DurationSeconds - (int)(elapsed - CalibrationDurationSeconds));
         }
-
-        public bool IsInBalance => GetBallPosition() >= TargetMin && GetBallPosition() <= TargetMax;
 
         public void GenerateLimits()
         {
-            Random rnd = new Random();
+            TargetMax = TargetWidth;
+        }
 
-            // 1. Definujeme společný cíl pro kuličku (v procentech 0-100)
-            double halfWidth = TargetWidth / 2;
-            double centerPos = rnd.Next(25, 75); // Střed arény
-            TargetMin = centerPos - halfWidth;
-            TargetMax = centerPos + halfWidth;
+        public void UpdateTargetZone()
+        {
+            // Dynamické rozšiřování zóny, pokud jsou hráči v klidu (blízko baseline)
+            if (LeftValue < _leftBaseline + 150 && RightValue < _rightBaseline + 150)
+            {
+                if (TargetWidth < 80) TargetWidth += 0.05;
+            }
+            else
+            {
+                // Pokud se stresují, zóna se vrátí na základ (stěžuje hru)
+                if (TargetWidth > 40) TargetWidth -= 0.1;
+            }
+            TargetMax = TargetWidth;
+        }
 
-            // 2. Definujeme cíl pro individuální panely (GSR hodnoty)
-            // Aby to logicky sedělo, pokud budou oba hráči na svém středu, 
-            // kulička bude na svém středu.
-            double centerGSR = centerPos * 10; // Přepočet z 0-100 na 0-1000
-            TargetMinPlayer = centerGSR - 100; // Tolerance +- 100 jednotek GSR
-            TargetMaxPlayer = centerGSR + 100;
+        public object GetState()
+        {
+            double ballPos = GetBallPosition();
+            int remaining = GetRemainingTime();
+            bool isWin = IsGameOver && remaining <= 0 && ballPos < TargetMax;
 
-            LimitsGenerated = true;
+            string status = IsCalibrating ? "Kalibrace..." : "Hra běží";
+            if (IsGameOver)
+            {
+                status = ballPos >= TargetMax ? "Příliš vysoký stres!" : "Vítězství!";
+            }
+
+            return new
+            {
+                roomId = RoomId,
+                ballPosition = ballPos,
+                isCalibrating = IsCalibrating,
+                calibrationTimeLeft = GetCalibrationRemaining(),
+                leftValue = LeftValue,
+                rightValue = RightValue,
+                targetMax = TargetMax,
+                isGameOver = IsGameOver,
+                remainingTime = remaining,
+                isWin = isWin,
+                endReason = status,
+                leftScl = Math.Max(0, LeftValue - _leftBaseline),
+                rightScl = Math.Max(0, RightValue - _rightBaseline)
+            };
         }
     }
 }

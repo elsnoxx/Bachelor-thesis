@@ -1,109 +1,67 @@
 import React from "react";
 
 type Props = {
-  leftValue?: number;
-  rightValue?: number;
-  ballPos?: number;        // NOVÉ: pozice z websocketu (0-100)
-  min?: number;
-  max?: number;
+  ballPos?: number | null; // očekáváme 0-100 (procenta)
   targetMin?: number;
   targetMax?: number;
+  isCalibrating?: boolean;
   height?: number;
 };
 
 export default function BalanceArena({
-  leftValue = 0,
-  rightValue = 0,
-  ballPos,
-  min = 0,
-  max = 1000,
-  targetMin = 400,
-  targetMax = 600,
+  ballPos = 0,
+  targetMax = 30,
+  isCalibrating = false,
   height = 200,
 }: Props) {
-  const range = Math.max(1, max - min);
-
-  // 1. Pozice kuličky: Priorita má ballPos ze serveru (0-100)
-  const cxPct = (typeof ballPos === "number" && !Number.isNaN(ballPos)) 
-                ? Math.min(100, Math.max(0, ballPos)) 
-                : ((leftValue + rightValue) / 2 / range) * 100;
-
-  // 2. Výpočet zelené plochy: Převod GSR limitů na procenta šířky
-  const tStartPct = ((targetMin - min) / range) * 100;
-  const tEndPct = ((targetMax - min) / range) * 100;
-  const tWidthPct = Math.max(0, tEndPct - tStartPct);
-
-  // 3. Stav "V balancu": ballPos je 0-100, takže ho musíme porovnat s procenty limitů
-  const ballPosNorm = cxPct / 100;
-  const targetMinNorm = (targetMin - min) / range;
-  const targetMaxNorm = (targetMax - min) / range;
-  const inTarget = ballPosNorm >= targetMinNorm && ballPosNorm <= targetMaxNorm;
-
-  // 4. Tilt (náklon): Vizuální efekt podle rozdílu hodnot
-  const tilt = ((rightValue - leftValue) / range) * 15; // Zvýšeno na 15 pro lepší feedback
+  const clamp = (v: number, a = 0, b = 100) => Math.min(b, Math.max(a, v));
+  
+  // Vizuální pozice: Chceme, aby 0 na serveru byla vlevo na liště a 100 vpravo.
+  const cxPct = clamp(typeof ballPos === "number" ? ballPos : 0, 0, 100);
+  
+  // Hranice v UI (zelená zóna) začíná na 0 a končí na targetMax
+  const tStart = 0;
+  const tEnd = clamp(targetMax, 0, 100);
+  const tWidth = tEnd - tStart;
+  
+  const inTarget = cxPct <= tEnd; // Pokud jsme pod limitem, jsme v cíli
 
   return (
-    <div className="w-full flex flex-col items-center gap-4">
-      <div className="w-full max-w-3xl flex justify-between px-4 font-medium text-gray-400 text-sm">
-        <span className={((leftValue + rightValue) / 2 / range) < 0.3 ? "text-red-500" : ""}>L</span>
-        <span className={inTarget ? "text-emerald-500" : ""}>CENTER</span>
-        <span className={((leftValue + rightValue) / 2 / range) > 0.7 ? "text-red-500" : ""}>P</span>
-      </div>
+    <div className="p-4 bg-white rounded shadow-sm border h-100 d-flex flex-column align-items-center">
+      <h6 className="mb-3">Společná úroveň stresu</h6>
+      <svg viewBox="0 0 100 100" className="w-100" style={{ maxHeight: `${height}px` }}>
+        {/* Pozadí pruhu (Šedá linka jako dráha) */}
+        <rect x="0" y="48" width="100" height="4" fill="#f3f4f6" rx="2" />
 
-      <div className="w-full max-w-3xl perspective-1000">
-        <div
-          className="relative bg-white rounded-2xl shadow-xl overflow-hidden border-4 border-gray-100 transition-transform duration-200 ease-out"
-          style={{
-            height: height,
-            transform: `rotateZ(${tilt}deg)`,
-          }}
-        >
-          <div className="absolute inset-0 flex">
-            <div className="w-1/4 h-full bg-gradient-to-r from-red-50 to-transparent opacity-50" />
-            <div className="w-2/4 h-full" />
-            <div className="w-1/4 h-full bg-gradient-to-l from-red-50 to-transparent opacity-50" />
-          </div>
+        {/* Zelená zóna (Bezpečná oblast od 0 do TargetMax) */}
+        <rect
+          x={tStart}
+          y="42"
+          width={tWidth}
+          height="16"
+          fill="#10b981"
+          fillOpacity={inTarget ? 0.2 : 0.1}
+          style={{ transition: "width 300ms ease" }}
+        />
 
-          <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <rect
-              x={tStartPct}
-              y={0}
-              width={tWidthPct}
-              height={100}
-              fill={inTarget ? "#10b981" : "#e5e7eb"}
-              fillOpacity={inTarget ? "0.15" : "0.1"}
-              className="transition-colors duration-300"
-            />
+        {/* Cílová čára (Propast) */}
+        <line x1={tEnd} y1="35" x2={tEnd} y2="65" stroke="#ef4444" strokeWidth="1" strokeDasharray="2 2" />
 
-            <line x1="50" y1="20" x2="50" y2="80" stroke="#d1d5db" strokeWidth="0.5" strokeDasharray="2 2" />
-            <line x1="10" y1="50" x2="90" y2="50" stroke="#f3f4f6" strokeWidth="2" strokeLinecap="round" />
+        {/* Kulička (Pohybuje se zleva doprava) */}
+        <circle
+          cx={cxPct}
+          cy="50"
+          r={isCalibrating ? 0 : 5}
+          fill={inTarget ? "#10b981" : "#ef4444"}
+          stroke="#fff"
+          strokeWidth={1}
+          style={{ transition: "all 100ms linear" }}
+        />
+      </svg>
 
-            <g style={{ transition: 'all 0.1s ease-out' }}>
-              <circle cx={cxPct} cy={55} r={4} fill="black" fillOpacity="0.05" />
-              <circle
-                cx={cxPct}
-                cy={50}
-                r={5}
-                fill={inTarget ? "#10b981" : "#3b82f6"}
-                stroke="white"
-                strokeWidth="1.5"
-                className="shadow-lg"
-              />
-              <circle cx={cxPct - 1.5} cy={48.5} r={1} fill="white" fillOpacity="0.4" />
-            </g>
-          </svg>
-
-          {cxPct < 10 && (
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 animate-pulse text-red-500 font-bold">
-              ◀ FALLING
-            </div>
-          )}
-          {cxPct > 90 && (
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 animate-pulse text-red-500 font-bold">
-              FALLING ▶
-            </div>
-          )}
-        </div>
+      <div className="w-100 mt-2 d-flex justify-content-between">
+        <small className="text-muted">Klid (0)</small>
+        <small className="text-danger">Limit ({Math.round(targetMax)})</small>
       </div>
     </div>
   );
