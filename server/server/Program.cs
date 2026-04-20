@@ -163,6 +163,7 @@ namespace server
 
             //SignalR endpoint
             app.MapHub<GameHub>("api/gamehub");
+            app.MapHub<TestHub>("api/testhub");
             // Health check endpoint
             app.MapHealthChecks("/health", new HealthCheckOptions
             {
@@ -207,6 +208,7 @@ namespace server
                         Username = "admin",
                         Email = "admin@example.com",
                         PasswordHash =  BCrypt.Net.BCrypt.HashPassword("admin"),
+                        IsEmailConfirmed = true,
                     });
 
                     dbContext.SaveChangesAsync();

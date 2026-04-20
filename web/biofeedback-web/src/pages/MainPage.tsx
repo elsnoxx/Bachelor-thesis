@@ -1,18 +1,73 @@
-import React from "react";
-import { Card, Container, Row, Col, Button, Badge } from "react-bootstrap";
+import React, { useState, useEffect } from "react"; // Chybělo useState a useEffect
+import { Card, Container, Row, Col, Button, Badge, ListGroup } from "react-bootstrap";
 import { Activity, Bluetooth, InfoCircle } from "react-bootstrap-icons";
-// Importujeme náš nový hook
-import { useBle } from "../services/BleProvider"; 
+import * as signalR from "@microsoft/signalr"; // Musíš mít nainstalováno: npm install @microsoft/signalr
+import { useBle } from "../services/BleProvider";
 
 export default function MainPage() {
-    // Vytáhneme vše potřebné z kontextu
     const { isConnected, gsrValue, batteryLevel, error, connect, disconnect } = useBle();
+
+    const [testHub, setTestHub] = useState(null);
+    const [latency, setLatency] = useState(null);
+    const [lastEcho, setLastEcho] = useState(null);
+
+    // Effect pro inicializaci SignalR připojení k TestHubu
+    useEffect(() => {
+        if (isConnected) {
+            // Získání tokenu z localStorage (předpokládám, že ho tam ukládáš při login)
+            const token = localStorage.getItem("token"); 
+
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl(`${import.meta.env.VITE_API_URL}/testhub`, {
+                    // Předání tokenu přes query string (jak máš nastaveno v Program.cs)
+                    accessTokenFactory: () => token 
+                })
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on("PongSensorData", (data) => {
+                const now = new Date();
+                // Server posílá DateTime.UtcNow, JS to převede na Date objekt
+                const sentTime = new Date(data.serverTimestamp);
+                setLatency(now - sentTime); 
+                setLastEcho(data.receivedValue);
+            });
+
+            connection.start()
+                .then(() => {
+                    console.log("Connected to TestHub");
+                    setTestHub(connection);
+                })
+                .catch(err => console.error("TestHub Connection Error: ", err));
+
+            // Cleanup: při odpojení senzoru nebo opuštění stránky zavřít socket
+            return () => {
+                if (connection) {
+                    connection.stop();
+                }
+            };
+        } else {
+            // Pokud se senzor odpojí, vyčistit stav
+            setTestHub(null);
+            setLatency(null);
+            setLastEcho(null);
+        }
+    }, [isConnected]);
+
+    // Effect pro automatické odesílání dat do TestHubu při každé změně gsrValue
+    useEffect(() => {
+        if (testHub && isConnected && gsrValue !== null) {
+            // Voláme metodu na backendu
+            testHub.invoke("PingSensorData", gsrValue)
+                .catch(err => console.error("Error invoking PingSensorData:", err));
+        }
+    }, [gsrValue, testHub, isConnected]);
 
     return (
         <Container className="mt-4 pb-5">
-            {/* Zobrazení případné chyby (např. nepodporovaný prohlížeč) */}
             {error && <div className="alert alert-danger">{error}</div>}
 
+            {/* Header sekce */}
             <div className="p-4 mb-4 bg-light rounded-3 border shadow-sm">
                 <Row className="align-items-center">
                     <Col md={8}>
@@ -26,7 +81,7 @@ export default function MainPage() {
                             <Badge bg={isConnected ? "success" : "danger"} className="mb-2">
                                 {isConnected ? "Připojeno" : "Odpojeno"}
                             </Badge>
-                            
+
                             {!isConnected ? (
                                 <Button variant="primary" size="sm" className="d-block mx-auto" onClick={connect}>
                                     Vyhledat zařízení
@@ -42,16 +97,17 @@ export default function MainPage() {
             </div>
 
             <Row className="mb-4">
-                <Col lg={6}>
+                {/* Karta 1: Hodnota ze senzoru */}
+                <Col lg={4} md={6} className="mb-3">
                     <Card className="h-100 shadow-sm text-center">
                         <Card.Header className="bg-dark text-white">
-                            <Activity className="me-2" /> Aktuální hodnota
+                            <Activity className="me-2" /> Aktuální hodnota (BLE)
                         </Card.Header>
                         <Card.Body className="d-flex flex-column justify-content-center">
                             {isConnected ? (
                                 <>
                                     {batteryLevel !== null && (
-                                        <Badge bg="secondary" className="p-2 mb-2">
+                                        <Badge bg="secondary" className="p-2 mb-2 w-50 mx-auto">
                                             🔋 {batteryLevel}%
                                         </Badge>
                                     )}
@@ -66,17 +122,49 @@ export default function MainPage() {
                         </Card.Body>
                     </Card>
                 </Col>
-                
-                <Col lg={6}>
-                    <Card className="h-100 border-info shadow-sm">
-                        <Card.Header className="bg-info text-white">
-                            <InfoCircle className="me-2" /> Jak to funguje?
+
+                {/* Karta 2: Diagnostika WebSocketu (Echo test) */}
+                <Col lg={4} md={6} className="mb-3">
+                    <Card className="h-100 shadow-sm border-warning">
+                        <Card.Header className="bg-warning text-dark fw-bold">
+                            📶 Diagnostika Serveru
                         </Card.Header>
                         <Card.Body>
-                             <p>Měříme elektrickou vodivost kůže. </p>
-                             <ul className="small">
-                                <li><strong>Vysoká hodnota:</strong> Stres / Aktivace</li>
-                                <li><strong>Nízká hodnota:</strong> Klid / Relaxace</li>
+                            {isConnected && testHub ? (
+                                <ListGroup variant="flush" className="small">
+                                    <ListGroup.Item className="d-flex justify-content-between align-items-center">
+                                        Stav spojení: <Badge bg="success">Aktivní</Badge>
+                                    </ListGroup.Item>
+                                    <ListGroup.Item className="d-flex justify-content-between align-items-center">
+                                        Server Echo: <strong>{lastEcho ?? "--"}</strong>
+                                    </ListGroup.Item>
+                                    <ListGroup.Item className="d-flex justify-content-between align-items-center">
+                                        Latence (RTT): <span className="text-primary fw-bold">{latency !== null ? `${latency} ms` : "--"}</span>
+                                    </ListGroup.Item>
+                                </ListGroup>
+                            ) : (
+                                <div className="text-center text-muted py-4">
+                                    {isConnected ? "Navazování spojení se serverem..." : "Čekání na BLE senzor..."}
+                                </div>
+                            )}
+                        </Card.Body>
+                        <Card.Footer className="text-muted small">
+                            Validace datové cesty přes TestHub
+                        </Card.Footer>
+                    </Card>
+                </Col>
+
+                {/* Karta 3: Vysvětlivky */}
+                <Col lg={4} md={12} className="mb-3">
+                    <Card className="h-100 border-info shadow-sm">
+                        <Card.Header className="bg-info text-white fw-bold">
+                            <InfoCircle className="me-2" /> Interpretace dat
+                        </Card.Header>
+                        <Card.Body>
+                             <p className="small text-muted">Měříme elektrickou vodivost kůže (GSR), která reaguje na aktivitu potních žláz ovládaných autonomním nervovým systémem.</p>
+                             <ul className="small fw-bold">
+                                <li className="text-danger">Vysoká / Rostoucí: Stres, vzrušení</li>
+                                <li className="text-success">Nízká / Klesající: Relaxace, klid</li>
                              </ul>
                         </Card.Body>
                     </Card>
