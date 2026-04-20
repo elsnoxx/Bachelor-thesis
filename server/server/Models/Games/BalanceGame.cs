@@ -53,7 +53,7 @@ namespace server.Models.Games
 
                 if (IsCalibrating) return false;
 
-                // Tady už je bezpečné volat .Value, protože jsme prošli kontrolou výše
+
                 //var secondsSinceStart = (DateTime.UtcNow - StartTime.Value).TotalSeconds;
                 //bool gracePeriodOver = secondsSinceStart > (CalibrationDurationSeconds + 2);
 
@@ -68,8 +68,7 @@ namespace server.Models.Games
         {
             if (playerId == LeftPlayerId)
             {
-                // Detekce SCR (stresového píku) - v DP uvádíš rychlý nárůst
-                // Hodnota 100 je pro tvůj rozsah (4000-8000) citlivější práh
+                // Detekce SCR (stresového píku)
                 if (!IsCalibrating && _lastValueLeft > 0 && (value - _lastValueLeft) > 100)
                 {
                     _scrPenalty += 15;
@@ -101,7 +100,7 @@ namespace server.Models.Games
             if (!IsCalibrating)
             {
                 UpdateTargetZone();
-                // Pomalejší vyprchání stresu (zklidnění trvá déle, viz DP str. 21)
+                // Pomalejší vyprchání stresu
                 _scrPenalty *= 0.97;
             }
         }
@@ -120,8 +119,6 @@ namespace server.Models.Games
             double leftDiff = Math.Max(0, LeftValue - _leftBaseline);
             double rightDiff = Math.Max(0, RightValue - _rightBaseline);
 
-            // CITLIVOST: Pro rozsah 4000-8000 je hodnota 40.0 ideální.
-            // Znamená to, že nárůst o 2000 jednotek (např. z 5000 na 7000) = 50 % posun.
             double sensitivity = 40.0;
             double sclBase = Math.Max(leftDiff, rightDiff) / sensitivity;
 
