@@ -2,70 +2,81 @@
 skinparam style strictuml
 skinparam sequenceMessageAlign center
 
-actor "Hráč" as Player
+actor "Hráč (Hráč 1 + Hráč 2)" as Player
 participant "React Frontend\n(EnergyBattleGame)" as FE
-participant "BLE Service\n(Senzor)" as BLE
+participant "BLE Service\n(Senzor Sensetio)" as BLE
 participant "SignalR Hub\n(GameHub)" as Hub
 participant "Backend Service\n(EnergyBattleService)" as Backend
-database "PostgreSQL\n(via Queue)" as DB
+database "PostgreSQL\n(via DbWriteQueue)" as DB
 
-== Inicializace a připojení ==
+== 1. Inicializace a povinné připojení ==
 
-Player -> FE : Otevře místnost (roomId)
-FE -> FE : getValidToken() (JWT check)
-FE -> Hub : Connect (with Token)
-Hub -> Hub : Authorize User
+Player -> FE : Vstup do místnosti
+FE -> FE : Kontrola JWT Tokenu
+FE -> Hub : Connect (Token)
 FE -> Hub : JoinRoom(roomId)
 
-== Aktivace Biofeedbacku ==
+Player -> FE : Připojení senzoru Sensetio
+FE -> BLE : Vyhledat (Web Bluetooth API)
+BLE -->> FE : Připojeno (isConnected = true)
 
-Player -> FE : Zahájí párování senzoru
-FE -> BLE : Vyhledat zařízení (Web Bluetooth API)
-BLE -> Player : Dialog pro výběr zařízení
-Player --> BLE : Potvrzení výběru
-BLE -->> FE : Zařízení připojeno (isConnected = true)
+== 2. Individuální kalibrace (10 s) ==
 
-== Herní smyčka (Real-time data) ==
+Player -> FE : Start hry
+FE -> Hub : StartCalibration(roomId)
+loop Každých 100ms
+    BLE -> FE : Surová hodnota EDA (v_raw)
+    FE -> FE : Normalizace: v_norm = (v_raw / 65535) * 1000
+    FE -> Hub : SendData(v_norm)
+    Hub -> Backend : ProcessCalibration(email, v_norm)
+end
+Backend -> Backend : Vypočti individuální baseline (klidová hladina)
 
-note over FE, BLE : Smyčka běží pouze při isConnected == true
+== 3. Bojová fáze (Herní smyčka) ==
 
-loop Každou 1 sekundu
-    BLE -> FE : Surová hodnota EDA (16-bit, 0–65535)
-    FE -> FE : Normalizace: v_norm = (v_raw / 65535) * 100
-
+loop Každých 100ms
+    BLE -> FE : Surová hodnota EDA (v_raw)
+    FE -> FE : v_norm = (v_raw / 65535) * 1000
     FE -> Hub : SendEnergyData(roomId, v_norm)
     Hub -> Backend : ProcessInput(roomId, email, v_norm)
 
+    group Výpočet energie na serveru
+        alt Relaxační nabíjení: v_norm <= baseline
+            Backend -> Backend : Plynulý nárůst energie (Tonická složka)
+        end
+        
+        alt Aktivační bonus: Detekce prudkého nárůstu (SCR pík)
+            Backend -> Backend : Okamžitý bonus +15% energie
+        end
+    end
+
     Backend -> DB : QueueBioFeedbackAsync(v_norm)
-
-    note over Backend : Výpočet ΔE:\npokud |v_norm - T| ≤ 10:\n  ΔE = max(0.5, 5 - diff/2)\njinak: ΔE = 0.1\nEnergy = min(100, Energy + ΔE)
-
-    Backend --> Hub : Vrať aktuální stav hry (ReceiveGameState)
+    Backend --> Hub : ReceiveGameState (Energy, HP soupeře)
     Hub -> FE : ReceiveGameState(data)
-    FE -> Player : Aktualizuj UI (Energy bar, Health, Target)
+    FE -> Player : Aktualizuj UI (Energy bar, Health, Ready to Fire)
 end
 
-== Akce: Výstřel (Fire) ==
+== 4. Akce: Výstřel (Fire) ==
 
-Player -> FE : Klikne na tlačítko "Vystřelit"
-note right of FE : Povoleno v UI pouze\npokud Energy >= 100
+Player -> FE : Klikne na "Vystřelit"
+note right of FE : Povoleno v UI pouze při Energy >= 100%
 
 FE -> Hub : FireCannon(roomId)
 Hub -> Backend : Fire(roomId, shooterEmail)
 
-alt Úspěšný zásah (Server-side validation: Energy >= 100)
-    Backend -> Backend : Reset Energy = 0
-    Backend -> Backend : Opponent Health -= 20
-    Backend -> Backend : Vygeneruj nový cílový limit T
-
+alt Validace na serveru: Energy >= 100%
+    Backend -> Backend : Reset útočníka: Energy = 0
+    Backend -> Backend : Poškození soupeře: HP -= 20
+    
     alt Zdraví soupeře <= 0
         Backend -> Backend : IsFinished = true
-        Backend -> DB : SaveFinalGameStats()
+        Backend -> DB : QueueGameResultAsync(stats)
+        Backend --> Hub : ReceiveGameState (isGameOver: true, Winner)
+        FE -> Player : Zobraz konečný výsledek (Vítězství/Prohra)
+    else Boj pokračuje
+        Backend --> Hub : ReceiveGameState (Aktualizované HP)
+        Hub -> FE : ReceiveGameState(data)
     end
-
-    Backend --> Hub : Nový stav (ReceiveGameState)
-    Hub -> FE : ReceiveGameState(data)
-    FE -> Player : Zobraz animaci výstřelu / Game Over
 end
 
 @enduml

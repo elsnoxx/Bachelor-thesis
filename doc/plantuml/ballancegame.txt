@@ -4,71 +4,78 @@ skinparam sequenceMessageAlign center
 
 actor "Hráč L + Hráč P" as Players
 participant "React Frontend\n(BalanceGame)" as FE
-participant "BLE Service\n(Senzor)" as BLE
+participant "BLE Service\n(Senzor Sensetio)" as BLE
 participant "SignalR Hub\n(GameHub)" as Hub
 participant "Backend Service\n(BallanceGameService)" as Backend
 participant "Game Model\n(BalanceGame)" as Model
-database "PostgreSQL\n(via Queue)" as DB
+database "PostgreSQL\n(via DbWriteQueue)" as DB
 
-== Inicializace a připojení ==
+== 1. Inicializace a povinné připojení ==
 
 Players -> FE : Otevře místnost (roomId)
-FE -> FE : getValidToken() (JWT check)
-FE -> Hub : Connect (with Token)
-Hub -> Hub : Authorize User
+FE -> FE : Kontrola JWT Tokenu
+FE -> Hub : Connect (Token)
+Hub -> Hub : Autorizace
 FE -> Hub : JoinRoom(roomId)
-
-== Aktivace Biofeedbacku ==
 
 Players -> FE : Zahájí párování senzoru
 FE -> BLE : Vyhledat zařízení (Web Bluetooth API)
-BLE -> Players : Dialog pro výběr zařízení
-Players --> BLE : Potvrzení výběru
-BLE -->> FE : Zařízení připojeno (isConnected = true)
+BLE -> Players : Systémový dialog
+Players --> BLE : Výběr Sensetio
+BLE -->> FE : Připojeno (isConnected = true)
+note over FE : Hra je odemčena až nyní
 
-== Herní smyčka (Kooperativní balancování) ==
+== 2. Kalibrační fáze (10 sekund) ==
 
-loop Každou 1 sekundu (pouze pokud isConnected)
-    BLE -> FE : Surová hodnota EDA (16-bit, 0–65535)
+loop Každých 100ms (vzorkování 10Hz)
+    BLE -> FE : Surová hodnota EDA (v_raw)
     FE -> FE : Normalizace: v_norm = (v_raw / 65535) * 1000
+    FE -> Hub : SendGameData(v_norm)
+    Hub -> Backend : HandleMove(v_norm)
+    Backend -> Model : Uložit vzorek pro Baseline
+end
+Backend -> Model : Stanovit baseline (klouzavé okno)
 
-    FE -> Hub : SendGameData(roomId, "ballance", v_norm)
-    Hub -> Backend : HandleMove("ballance", roomId, email, v_norm)
+== 3. Aktivní trénink (120 sekund) ==
 
-    alt Druhý hráč se právě připojil (Start hry)
-        Backend -> Model : GenerateLimits()\n(střed C ∈ <25,75>, T_min=C-10, T_max=C+10)
-        Backend -> DB : UpdateRoomStatus("InProgress")
+loop Každých 100ms
+    BLE -> FE : Surová hodnota EDA (v_raw)
+    FE -> FE : v_norm = (v_raw / 65535) * 1000
+    FE -> Hub : SendGameData(roomId, "balance", v_norm)
+    Hub -> Backend : HandleMove("balance", roomId, email, v_norm)
+
+    group Zpracování signálu na serveru
+        Backend -> Model : Vypočítat Tonickou složku (AVG 50 vzorků)
+        Backend -> Model : Detekovat Fázickou složku (stresové špičky)
+        alt Detekován nárůst > 800 jedn.
+            Model -> Model : Přičíst P_penalizace (5 bodů)
+        else Doznívání
+            Model -> Model : P_penalizace = P_penalizace * 0.97
+        end
     end
 
-    Backend -> Model : AddValue(playerId, v_norm)
-    note right of Model : Posuvné okno\nposledních 30 hodnot
+    Backend -> Model : GetBallPosition()
+    note right of Model : P = clamp(max(Δv_L, Δv_R)/s + P_penalizace, 0, 100)
 
     Backend -> DB : QueueBioFeedbackAsync(v_norm)
-
-    Backend -> Model : GetBallPosition()
-    note right of Model : P = clamp((avg_L + avg_R) / 20, 0, 100)
-
-    Backend -> Model : GetRemainingTime()
-
-    Backend --> Hub : BallanceGameState
+    
+    Backend --> Hub : BalanceGameState (P, time)
     Hub -> FE : ReceiveGameState(state)
-    FE -> Players : Aktualizace UI\n(pozice kuličky, limity, čas)
+    FE -> Players : Aktualizace UI (kulička, čas)
 end
 
-== Konec hry (Vítězství / Prohra) ==
+== 4. Ukončení hry a zápis ==
 
-alt P < T_min nebo P > T_max (kulička mimo zónu)
-    Backend -> Model : IsGameOver = true
+alt P >= T_max (Kulička překročila hranici)
+    Backend -> Model : IsGameOver = true, IsWin = false
     Backend -> DB : QueueGameResultAsync(stats)
-    Backend --> Hub : ReceiveGameState (isGameOver: true, isWin: false)
-    Hub -> FE : ReceiveGameState(state)
-    FE -> Players : Zobraz GameOverModal – Prohra
-else t_remaining <= 0 a T_min <= P <= T_max (čas vypršel, kulička v zóně)
-    Backend -> Model : IsGameOver = true
+    Backend --> Hub : GameState (GameOver)
+    FE -> Players : Zobrazit Prohru (náraz)
+else t_remaining <= 0 (Čas vypršel a kulička v zóně)
+    Backend -> Model : IsGameOver = true, IsWin = true
     Backend -> DB : QueueGameResultAsync(stats)
-    Backend --> Hub : ReceiveGameState (isGameOver: true, isWin: true)
-    Hub -> FE : ReceiveGameState(state)
-    FE -> Players : Zobraz GameOverModal – Vítězství
+    Backend --> Hub : GameState (Victory)
+    FE -> Players : Zobrazit Vítězství
 end
 
 @enduml
