@@ -1,6 +1,7 @@
 ﻿using Serilog;
 using server.Models.DTO;
 using server.Models.Games;
+using server.Models.Games.BalloonGame;
 using server.Repositories.Interfaces;
 using server.Services.Utils;
 
@@ -30,7 +31,7 @@ namespace server.Services.GameServices
             var game = GetOrCreateGame(roomId);
 
             if (!game.Players.ContainsKey(playerId) && game.Players.Count < game.MaxPlayers)
-                game.Players.TryAdd(playerId, new BalloonControlGame.BalloonPlayer { Email = playerId });
+                game.Players.TryAdd(playerId, new BalloonPlayer { Email = playerId });
 
             if (game.StartTime == null && game.Players.Count >= game.MaxPlayers)
             {
@@ -38,24 +39,52 @@ namespace server.Services.GameServices
                 NotifyRoomStatus(roomId, RoomStatus.Start);
             }
 
-            if (game.StartTime == null)
-                return GetWaitingState(game);
+            if (game.StartTime == null) return GetWaitingState(game);
+            if (!game.Players.TryGetValue(playerId, out var player) || game.IsFinished) return GetState(game);
 
-            if (!game.Players.TryGetValue(playerId, out var player) || game.IsFinished)
-                return GetState(game);
+            var elapsed = (DateTime.UtcNow - game.StartTime.Value).TotalSeconds;
 
-            player.Altitude = value;
+            // 1. Fáze kalibrace (10 s) dle textu
+            if (elapsed <= 10)
+            {
+                player.CalibrationData.Add(value);
+                if (elapsed >= 9.5 && !player.IsCalibrated)
+                {
+                    player.Baseline = player.CalibrationData.Any() ? player.CalibrationData.Average() : value;
+                    player.IsCalibrated = true;
+                }
+            }
+            // 2. Závodní fáze
+            else
+            {
+                // Pohon klidem (Tonická složka): +5 jen pokud value <= baseline
+                if (value <= player.Baseline)
+                {
+                    player.DistanceTraveled += 5;
+                }
+
+                // Akcelerační bonus (SCR): +20 při skoku
+                // Upravte práh (750 v textu může být moc, pokud normalizujete 0-1000)
+                if (player.LastValue > 0 && (value - player.LastValue) > 150)
+                {
+                    player.DistanceTraveled += 20;
+                    Log.Information("[SCR BONUS] Player {Player} jumped forward!", playerId);
+                }
+            }
+
+            player.Altitude = value; // y-osa odpovídá v_norm
             player.LastValue = value;
-            player.DistanceTraveled += 2;
 
+            // Kontrola cíle (1000 jednotek)
             if (player.DistanceTraveled >= game.FinishLineDistance)
             {
                 game.IsFinished = true;
                 game.WinnerEmail = player.Email;
-                game.EndReason = $"Player {player.Email.Split('@')[0]} reached the finish line first!";
 
                 var ids = game.Players.Keys.ToList();
-                SaveGameResult(game.RoomId, ids.FirstOrDefault(), ids.Skip(1).FirstOrDefault(), "balloon", playerId);
+                // Uložení: pro multiplayer (2-4) posíláme vítěze a první dva v seznamu
+                SaveGameResult(game.RoomId, ids[0], ids.Count > 1 ? ids[1] : null, "balloon", playerId);
+                NotifyRoomStatus(roomId, RoomStatus.Finish);
             }
 
             SaveBioFeedback(playerId, roomId, value);

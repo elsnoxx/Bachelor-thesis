@@ -161,27 +161,35 @@ export default function BalanceGame() {
 
     // SIMULACE ODESÍLÁNÍ DAT
     useEffect(() => {
-        if (gameOver || !isConnected) return;
+        // Pokud hra skončila, nic neposíláme
+        if (gameOver) return;
 
         const interval = setInterval(() => {
-            let valueToEmit: number;
+            if (!connection || connection.state !== "Connected") return;
+
+            let valueToEmit: number | null = null;
 
             if (isConnected && gsrValue !== null && gsrValue !== undefined) {
-                // PŘÍPAD A: Senzor je připojen a dává data
+                // PŘÍPAD A: Senzor je připojen a dává reálná data
                 valueToEmit = gsrValue;
-            } else {
+            }
+            /* --- TESTOVACÍ SIMULÁTOR: ZAKOMENTOVÁNO PRO PRODUKCI (POUŽITÍ POUZE S REÁLNÝM SENZOREM) ---
+            else {
                 // PŘÍPAD B: Senzor není, simulujeme plynulou "náhodnou procházku"
-                // Místo úplně náhodného čísla (0-1000) pohneme stávající hodnotou o kousek
                 const change = (Math.random() - 0.5) * 20;
                 simulatedValueRef.current = Math.max(0, Math.min(1000, simulatedValueRef.current + change));
                 valueToEmit = simulatedValueRef.current;
             }
-            console.log("Odesílám hodnotu:", valueToEmit);
-            // Odeslání na server
-            connection.invoke("SendGameData", roomId, "ballance", valueToEmit)
-                .catch(err => console.error("Error sending data:", err));
+            ------------------------------------------------------------------------------------------ */
 
-        }, 200); // 200ms je pro biofeedback plynulejší než 1000ms
+            // Data odesíláme pouze pokud byla získána ze senzoru (valueToEmit není null)
+            if (valueToEmit !== null) {
+                console.log("Odesílám reálnou hodnotu ze senzoru:", valueToEmit);
+                connection.invoke("SendGameData", roomId, "ballance", valueToEmit)
+                    .catch(err => console.error("Error sending data:", err));
+            }
+
+        }, 200);
 
         return () => clearInterval(interval);
     }, [connection, roomId, gameOver, isConnected, gsrValue]);

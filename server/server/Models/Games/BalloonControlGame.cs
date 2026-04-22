@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using server.Models.Games.BalloonGame;
+using System.Collections.Concurrent;
 
 namespace server.Models.Games
 {
@@ -13,12 +14,5 @@ namespace server.Models.Games
         public int MaxPlayers { get; set; } = 2;
         public string? EndReason { get; set; }
 
-        public class BalloonPlayer
-        {
-            public string Email { get; set; } = string.Empty;
-            public double Altitude { get; set; } = 0; // Výška (ovládaná GSR)
-            public double DistanceTraveled { get; set; } = 0; // Progres v mapě
-            public double LastValue { get; set; } // Pro ukládání biofeedbacku
-        }
     }
 }

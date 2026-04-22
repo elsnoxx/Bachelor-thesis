@@ -60,7 +60,9 @@ export const BattleControls = ({ target, targetMin, targetMax, nextChangeIn, cur
 
       <div className="row">
         <div className="col text-info">Target: {target.toFixed(2)}</div>
-        <div className="col">Next change: {nextChangeIn}s</div>
+        {nextChangeIn != 0 && (
+          <div className="col">Kalibrace: {nextChangeIn}s</div>
+        )}
         <div className="col text-warning">Current: {currentValue.toFixed(2)}</div>
       </div>
 

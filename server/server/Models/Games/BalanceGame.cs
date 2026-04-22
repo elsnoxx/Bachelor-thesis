@@ -48,16 +48,17 @@ namespace server.Models.Games
         {
             get
             {
-                // PŘIDÁNO: Pokud hra ještě nezačala (není StartTime), nemůže být konec hry
                 if (!StartTime.HasValue) return false;
-
                 if (IsCalibrating) return false;
 
+                // Přidáváme časovou pojistku (20s), aby hra neskončila hned v první sekundě po kalibraci
+                var secondsSinceStart = (DateTime.UtcNow - StartTime.Value).TotalSeconds;
+                if (secondsSinceStart > (CalibrationDurationSeconds + 20))
+                {
+                    if (GetBallPosition() >= TargetMax) return true;
+                }
 
-                //var secondsSinceStart = (DateTime.UtcNow - StartTime.Value).TotalSeconds;
-                //bool gracePeriodOver = secondsSinceStart > (CalibrationDurationSeconds + 2);
-
-                //if (gracePeriodOver && GetBallPosition() >= TargetMax) return true;
+                // Vítězství časem
                 if (GetRemainingTime() <= 0) return true;
 
                 return false;
@@ -140,14 +141,15 @@ namespace server.Models.Games
 
         public void UpdateTargetZone()
         {
-            // Dynamické rozšiřování zóny, pokud jsou hráči v klidu (blízko baseline)
+            // Pokud má být zóna fixní dle textu:
+            // TargetMax = 50.0; // Nebo jiná konstanta, kterou zvolíte jako obtížnost
+
             if (LeftValue < _leftBaseline + 150 && RightValue < _rightBaseline + 150)
             {
                 if (TargetWidth < 80) TargetWidth += 0.05;
             }
             else
             {
-                // Pokud se stresují, zóna se vrátí na základ (stěžuje hru)
                 if (TargetWidth > 40) TargetWidth -= 0.1;
             }
             TargetMax = TargetWidth;

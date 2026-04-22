@@ -65,6 +65,7 @@ export default function EnergyBattleGame() {
       // Používáme volitelné řetězení (?.) pro jistotu
       const meData = players.find((p) => p.email?.toLowerCase() === myEmail?.toLowerCase());
       const opponentData = players.find((p) => p.email?.toLowerCase() !== myEmail?.toLowerCase());
+      console.log("Aktualizace stavu hry:", { meData, opponentData });
 
       if (meData) {
         setGameState({
@@ -115,25 +116,37 @@ export default function EnergyBattleGame() {
   }, [roomId]);
 
   // SIMULÁTOR (Interval pro odesílání dat)
+  // SIMULÁTOR (Interval pro odesílání dat)
   useEffect(() => {
     if (isGameOver || !connection) return;
 
     const interval = setInterval(() => {
       if (connection.state === "Connected") {
+
+        /* --- TESTOVACÍ SIMULÁTOR: ZAKOMENTOVÁNO PRO PRODUKCI (POUŽITÍ POUZE S BLE) ---
+        // Tato část generovala náhodná data, pokud nebylo připojeno BLE.
+        // Nyní se data posílají pouze přes větev 'else' níže, pokud je isConnected true.
+
         const fakeGsr = Math.random() * 100;
 
-        // AKTUALIZACE LOKÁLNÍHO STAVU PRO UI
         if (!isConnected) {
           setSimulatedGsr(fakeGsr);
+          // Odesílání fake dat na server
+          connection.invoke("SendGameData", roomId, "energybattle", fakeGsr)
+            .catch(err => console.error("Chyba při odesílání simulace:", err));
         }
+        ---------------------------------------------------------------------------- */
 
-        connection.invoke("SendGameData", roomId, "energybattle", fakeGsr)
-          .catch(err => console.error("Chyba při odesílání simulace:", err));
+        // ODESÍLÁNÍ REÁLNÝCH DAT (Běží pouze, pokud je BLE připojeno)
+        if (isConnected) {
+          connection.invoke("SendGameData", roomId, "energybattle", gsrValue || 0)
+            .catch(err => console.error("Chyba při odesílání reálných dat:", err));
+        }
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [connection, roomId, isGameOver, isConnected]);
+  }, [connection, roomId, isGameOver, isConnected, gsrValue]); // Přidán gsrValue do závislostí
 
   const handleFire = () => {
     if (connection) {
