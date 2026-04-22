@@ -25,8 +25,9 @@ services:
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=biofeedback;Username=postgres;Password=postgres
       - SMTP_HOST=smtp.gmail.com
       - SMTP_PORT=587
-      - SMTP_USER=tvuj.email@gmail.com
-      - SMTP_PASS=tvoje-heslo-pro-aplikace
+      - SMTP_USER=ficek.risa@gmail.com
+      - SMTP_PASS=igxx vwyp voru uzsi
+      - SERVER_URL=http://localhost:5000
     ports:
       - "5000:80"
     depends_on:
@@ -40,6 +41,8 @@ services:
       context: ./web/biofeedback-web
       dockerfile: Dockerfile
     container_name: biofeedback-frontend
+    env_file:
+    - ./web/biofeedback-web/.env.production
     ports:
       - "80:80"
       - "443:443"
