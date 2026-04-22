@@ -23,8 +23,60 @@ Cílem této bakalářské práce je navrhnout a naprogramovat **hry pro více h
 - [Herní mechaniky](/doc/games/) - popis jednotlivých her
 ---
 
-## Roadmap & TODO
-Seznam nedokončených funkcí a plánovaných vylepšení je dostupný v [TODO dokumentaci](doc/Todos.md).
+
+## Spuštění aplikace
+
+Tuto aplikaci lze provozovat buď jako kompletní celek pomocí kontejnerizace, nebo spouštět jednotlivé části (backend a frontend) samostatně pro účely vývoje a ladění.
+
+### 1. Kompletní spuštění (Docker Compose)
+
+Nejjednodušším způsobem, jak zprovoznit celou infrastrukturu včetně databáze, je použití nástroje **Docker Compose**. Tento přístup zaručuje, že všechna prostředí budou správně nakonfigurována.
+
+1. Otevřete terminál v kořenové složce projektu `/Bachelor-thesis`.
+2. Spusťte příkaz pro sestavení a spuštění kontejnerů:
+
+```bash
+docker compose up --build
+```
+
+Zakladní uživatel: admin@example.com, admin
+
+Upozornění: První sestavení může trvat delší dobu, protože je nutné stáhnout základní obrazy (Docker Images) a následně provést kompilaci aplikací.
+
+V případě potřeby lze upravit parametry (např. porty nebo databázová hesla) přímo v souboru `docker-compose.yml`, kde jsou přednastaveny hodnoty použité během testování.
+
+### 2. Samostatné spuštění (Vývojářský režim)
+
+Pokud potřebujete spustit služby samostatně bez využití Dockeru, postupujte podle následujících kroků:
+
+#### A. Backend (API a WebSocket server)
+
+Serverová část je postavena na platformě .NET. Pro její úspěšný běh je nezbytné mít přístup k běžící instanci databáze.
+
+1. Přejděte do složky se serverovou částí aplikace.
+2. Proveďte sestavení a spuštění příkazem:
+
+```bash
+dotnet run
+```
+
+Server se spustí a začne naslouchat na definovaném portu. Pokud aplikace nenaváže spojení s databází, proces se ukončí s chybou.
+
+#### B. Frontend (UI React aplikace)
+
+Webové rozhraní využívá framework React a pro správu balíčků nástroj npm.
+
+1. Přejděte do složky s frontendovou aplikací.
+2. Spusťte instalovaní balíčků npm:
+```bash
+npm install
+```
+2. Spusťte vývojový server příkazem:
+```bash
+npm run dev
+```
+
+Aplikace bude dostupná na adrese `localhost` (zpravidla port 5173). Konfiguraci adresy backendového serveru pro směrování API požadavků a WebSocket komunikace lze upravit v souboru `.env`.
 
 ## Licence
 
