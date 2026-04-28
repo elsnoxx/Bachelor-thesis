@@ -29,7 +29,6 @@ export default function GameRoomsTable({ gameType, redirectPath }: GameRoomsTabl
 
     const navigate = useNavigate();
 
-    // Pomocná funkce pro získání emailu (můžeš ji vyhodit do utility.ts)
     const getUserEmail = (): string | null => {
         const userJson = localStorage.getItem('user');
         if (userJson) try { return JSON.parse(userJson).email || null; } catch { }
@@ -57,30 +56,27 @@ export default function GameRoomsTable({ gameType, redirectPath }: GameRoomsTabl
     if (!userEmail) return alert('Musíš být přihlášen.');
     
     setJoining(true);
-    setApiMessage(null); // Resetujeme starou zprávu před novým pokusem
+    setApiMessage(null);
 
     try {
         const res = await RoomService.joinRoom(roomId, userEmail, password ?? '');
         
-        // Pokud backend vrací Result objekt, zpráva je v res.message
         setApiMessage(res?.message ?? 'Úspěšně připojeno.');
 
         sessionStorage.setItem(`roomName_${roomId}`, roomName);
         
-        // Malá prodleva, aby uživatel stihl vidět úspěšnou hlášku, než ho to přesměruje
         setTimeout(() => {
             navigate(`${redirectPath}/${roomId}`, { state: { roomName } });
         }, 1000);
 
     } catch (err: any) {
-        // Tady vytáhneme text, který jsi poslal z C# přes Result.Fail()
         const backendMessage = err.response?.data?.message || err.response?.data || err.message;
         
         setApiMessage(backendMessage); 
-        setError(null); // Nechceme, aby zmizela celá tabulka, jen ukážeme Alert
+        setError(null);
         
         console.error("Join error:", err);
-        fetchGameRooms(); // Obnovíme stav hráčů (možná se mezitím zaplnilo)
+        fetchGameRooms();
     } finally {
         setJoining(false);
         setShowPasswordModal(false);

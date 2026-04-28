@@ -9,10 +9,10 @@ interface UseGameConnectionProps {
     onStateReceived: (state: any) => void;
 }
 
-// useGameConnection.tsx
+
 export function useGameConnection({ roomId, gameType, onStateReceived }: UseGameConnectionProps) {
     const [connection, setConnection] = useState<HubConnection | null>(null);
-    const connRef = useRef<HubConnection | null>(null); // Ref je zásadní pro stabilitu
+    const connRef = useRef<HubConnection | null>(null);
     const { gsrValue, isConnected } = useBle();
     const [simulatedGsr, setSimulatedGsr] = useState<number>(0);
 
@@ -27,7 +27,7 @@ export function useGameConnection({ roomId, gameType, onStateReceived }: UseGame
 
         const newConnection = new HubConnectionBuilder()
             .withUrl(`${import.meta.env.VITE_API_URL}/gamehub`, {
-                accessTokenFactory: () => token // Pro stabilitu použijeme token, co byl k dispozici při mountu
+                accessTokenFactory: () => token
             })
             .withAutomaticReconnect()
             .configureLogging(LogLevel.Information)
@@ -37,7 +37,6 @@ export function useGameConnection({ roomId, gameType, onStateReceived }: UseGame
             onStateReceived(state);
         });
 
-        // Prázdné handlery, aby SignalR neházel warningy
         newConnection.on("PlayerJoined", () => {});
         newConnection.on("PlayerLeft", () => {});
 
@@ -50,7 +49,7 @@ export function useGameConnection({ roomId, gameType, onStateReceived }: UseGame
                 setConnection(newConnection);
             } catch (err) {
                 console.error("Start failed:", err);
-                setTimeout(start, 3000); // Jednoduchý retry
+                setTimeout(start, 3000);
             }
         };
 

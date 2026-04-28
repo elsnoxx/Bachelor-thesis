@@ -1,8 +1,8 @@
 export interface BalloonPlayer {
     email: string;
-    altitude: number;  // Y osa (výška)
-    distance: number;  // X osa (vzdálenost)
-    progress: number;  // 0-100%
+    altitude: number;
+    distance: number;
+    progress: number;
 }
 
 export interface BalloonGameState {

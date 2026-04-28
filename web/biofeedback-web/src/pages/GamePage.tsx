@@ -35,7 +35,6 @@ export default function HryPage() {
                                 <Card.Text className="flex-grow-1">
                                     {game.description}
                                 </Card.Text>
-                                {/* Doporučuji použít Link z react-router-dom místo <a>, pokud chceš plynulý přechod bez reloadu */}
                                 <a href={game.href} className="btn btn-primary mt-auto">
                                     Hrát
                                 </a>

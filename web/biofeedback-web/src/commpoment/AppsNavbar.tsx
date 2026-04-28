@@ -4,7 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Bell, PersonCircle } from "react-bootstrap-icons";
 import LoginModal from "./LoginModal";
 import RegisterModal from "./RegisterModal";
-import PasswordModal from "./PasswordModal"; // 1. Importujte modál pro heslo
+import PasswordModal from "./PasswordModal";
 import { AuthContext } from "./AuthContext";
 
 const navigation = [
@@ -26,7 +26,7 @@ export default function AppsNavbar() {
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
           
-          {/* LEVÁ ČÁST - me-auto odtlačí vše napravo */}
+
           <Nav className="me-auto">
             {user && navigation.map((item) => (
               <Nav.Link
@@ -40,7 +40,7 @@ export default function AppsNavbar() {
             ))}
           </Nav>
 
-          {/* PRAVÁ ČÁST - Tlačítka nebo Profil */}
+
           <Nav className="align-items-center">
             {user ? (
               <>

@@ -12,7 +12,7 @@ export const PlayerInfoCard: React.FC<PlayerCardProps> = ({ player, playerNumber
     const isWaiting = !player;
 
     return (
-        <Col md={12} className="mb-3 px-1"> {/* Změna na md={12}, protože vnější Col už má md={2} */}
+        <Col md={12} className="mb-3 px-1">
             <Card 
                 bg={isMe ? 'dark' : 'secondary'} 
                 text="white" 

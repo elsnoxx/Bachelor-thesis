@@ -11,7 +11,6 @@ interface BattleControlsProps {
 }
 
 export const BattleControls = ({ target, targetMin, targetMax, nextChangeIn, currentValue, isReady, onFire }: BattleControlsProps) => {
-  // Přepočet na procenta (předpokládáme, že GSR i Target jsou 0-100)
   const leftPos = Math.max(0, Math.min(100, targetMin));
   const widthPos = Math.max(1, Math.min(100, targetMax - targetMin));
   const currentPos = Math.max(0, Math.min(100, currentValue));
@@ -30,7 +29,7 @@ export const BattleControls = ({ target, targetMin, targetMax, nextChangeIn, cur
           height: '20px',
           background: '#444',
           borderRadius: '10px',
-          overflow: 'hidden' // -> ořízne vše, co přesahuje
+          overflow: 'hidden'
         }}
       >
         {/* Cílová zóna */}
@@ -41,7 +40,7 @@ export const BattleControls = ({ target, targetMin, targetMax, nextChangeIn, cur
             width: `${widthPos}%`,
             height: '100%',
             opacity: 0.6,
-            transition: 'all 0.5s ease' // Plynulý posun zóny
+            transition: 'all 0.5s ease'
           }}
         />
         {/* Ukazatel tvé hodnoty */}
@@ -50,9 +49,9 @@ export const BattleControls = ({ target, targetMin, targetMax, nextChangeIn, cur
           style={{
             left: `${currentPos}%`,
             width: '4px',
-            height: '100%',   // plná výška baru
-            top: '0',         // zarovnat dovnitř
-            transform: 'translateX(-50%)', // centrovat šířku ukazatele na pozici
+            height: '100%',
+            top: '0',
+            transform: 'translateX(-50%)',
             transition: 'left 0.1s linear'
           }}
         />

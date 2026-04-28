@@ -7,7 +7,7 @@ import GameHeader from "../general/GameHeader";
 import GameOverModal from "../general/GameOverModal";
 import type { BalloonGameState } from "./balloonsTypes";
 import { useBle } from "../../../services/BleProvider";
-import { PlayerInfoCard } from "./components/PlayerInfoCard"; // Používá novou "Card" verzi
+import { PlayerInfoCard } from "./components/PlayerInfoCard";
 import api from "../../../api/axiosInstance";
 
 export default function BalloonGame() {

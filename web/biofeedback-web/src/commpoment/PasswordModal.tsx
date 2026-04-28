@@ -22,7 +22,6 @@ export default function PasswordModal({ show, onHide }: { show: boolean; onHide:
         newPassword,
         confirmNewPassword
       });
-      // pokud backend vrací text nebo JSON, případně kontroluj res.status
       alert("Heslo úspěšně změněno (nebo požadavek přijat).");
       onHide();
     } catch (err: any) {

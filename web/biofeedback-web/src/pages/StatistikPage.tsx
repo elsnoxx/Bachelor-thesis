@@ -57,10 +57,10 @@ export default function StatistikyPage() {
   if (error) return <div style={{ color: "red" }}>{error}</div>;
 
   const chartData = (stats ?? [])
-    .slice() // clone
+    .slice() 
     .sort((a, b) => new Date(a.timestamp ?? a.date).getTime() - new Date(b.timestamp ?? b.date).getTime())
     .map((b) => ({
-      time: new Date(b.timestamp ?? b.date).toLocaleTimeString(), // zobrazit čas na ose X
+      time: new Date(b.timestamp ?? b.date).toLocaleTimeString(),
       gsr: (b.gsrValue ?? b.gsr_value ?? b.value) as number,
     }));
 

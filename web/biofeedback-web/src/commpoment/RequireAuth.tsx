@@ -7,7 +7,6 @@ export default function RequireAuth({ children }: { children: JSX.Element }) {
   const location = useLocation();
 
   if (!user) {
-    // není přihlášen -> přesměruj na úvodní stránku
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 

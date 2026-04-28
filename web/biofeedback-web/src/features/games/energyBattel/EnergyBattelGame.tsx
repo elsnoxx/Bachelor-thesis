@@ -62,7 +62,7 @@ export default function EnergyBattleGame() {
       const myEmail = getUserEmail();
       const players = data.players as any[];
 
-      // Používáme volitelné řetězení (?.) pro jistotu
+
       const meData = players.find((p) => p.email?.toLowerCase() === myEmail?.toLowerCase());
       const opponentData = players.find((p) => p.email?.toLowerCase() !== myEmail?.toLowerCase());
       console.log("Aktualizace stavu hry:", { meData, opponentData });
@@ -116,7 +116,6 @@ export default function EnergyBattleGame() {
   }, [roomId]);
 
   // SIMULÁTOR (Interval pro odesílání dat)
-  // SIMULÁTOR (Interval pro odesílání dat)
   useEffect(() => {
     if (isGameOver || !connection) return;
 
@@ -146,12 +145,10 @@ export default function EnergyBattleGame() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [connection, roomId, isGameOver, isConnected, gsrValue]); // Přidán gsrValue do závislostí
+  }, [connection, roomId, isGameOver, isConnected, gsrValue]);
 
   const handleFire = () => {
     if (connection) {
-      // V Hubu se tato metoda jmenuje FireCannon nebo Fire? 
-      // Podle tvého kódu Hubu je to FireCannon
       connection.invoke("FireCannon", roomId).catch(console.error);
     }
   };

@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from "react";
-import { Modal, Form, Button, InputGroup, Alert } from "react-bootstrap"; // Přidán Alert
+import { Modal, Form, Button, InputGroup, Alert } from "react-bootstrap";
 import { AuthContext } from "./AuthContext";
 import api from "../api/axiosInstance";
 import PasswordModal from "./PasswordModal";
@@ -8,11 +8,11 @@ export default function LoginModal({ show, onHide }: { show: boolean; onHide: ()
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null); // Stav pro chybu
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const auth = useContext(AuthContext);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
-  // Vyčistit chybu, když se modál zavře nebo znovu otevře
+
   useEffect(() => {
     if (!show) {
       setErrorMessage(null);
@@ -23,7 +23,7 @@ export default function LoginModal({ show, onHide }: { show: boolean; onHide: ()
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setErrorMessage(null); // Reset chyby před novým pokusem
+    setErrorMessage(null);
 
     try {
       const res = await api.post("/login", { email, password });
@@ -39,7 +39,6 @@ export default function LoginModal({ show, onHide }: { show: boolean; onHide: ()
       }
     } catch (err: any) {
       console.error(err);
-      // Vytáhneme zprávu z backendu nebo použijeme defaultní
       const msg = err.response?.data || "Přihlášení selhalo. Zkontrolujte údaje.";
       setErrorMessage(typeof msg === 'string' ? msg : "Chybné přihlašovací údaje");
     } finally {
@@ -54,7 +53,6 @@ export default function LoginModal({ show, onHide }: { show: boolean; onHide: ()
           <Modal.Title>Přihlášení</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {/* Zobrazení chyby v červeném poli */}
           {errorMessage && (
             <Alert variant="danger" className="py-2 small">
               {errorMessage}

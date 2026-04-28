@@ -9,7 +9,7 @@ import GameOverModal from "../general/GameOverModal";
 import api from "../../../api/axiosInstance";
 import { useBle } from "../../../services/BleProvider";
 
-// Definujeme rozhraní pro stav, který nám teď posílá C# server
+
 interface BallanceGameState {
     ballPosition: number;
     leftValue: number;
@@ -43,7 +43,6 @@ export default function BalanceGame() {
     const [gameResult, setGameResult] = useState<{ isWin: boolean, reason: string | null } | null>(null);
     const [gameState, setGameState] = useState<BallanceGameState | null>(null);
 
-    // Stavy pro hráče a kuličku (nyní synchronizované se serverem)
     const [leftPlayer, setLeftPlayer] = useState<{ id: string | null, value: number }>({ id: null, value: 500 });
     const [rightPlayer, setRightPlayer] = useState<{ id: string | null, value: number }>({ id: null, value: 500 });
     const [ballPos, setBallPos] = useState<number>(50); // 50 je střed
@@ -54,11 +53,10 @@ export default function BalanceGame() {
     const simulatedValueRef = useRef<number>(500);
 
     const audioRef = useRef<HTMLAudioElement | null>(null);
-    // Audio efekt - hluk narůstá s blížícím se okrajem
+
     useEffect(() => {
         if (!audioRef.current || !gameState) return;
 
-        // Hlasitost od 0 do 1 podle toho, jak moc je kulička v "nebezpečí" (nad targetMax)
         const dangerLevel = Math.max(0, (gameState.ballPosition / 100));
         audioRef.current.volume = Math.min(1, dangerLevel);
     }, [gameState?.ballPosition]);
@@ -161,7 +159,6 @@ export default function BalanceGame() {
 
     // SIMULACE ODESÍLÁNÍ DAT
     useEffect(() => {
-        // Pokud hra skončila, nic neposíláme
         if (gameOver) return;
 
         const interval = setInterval(() => {

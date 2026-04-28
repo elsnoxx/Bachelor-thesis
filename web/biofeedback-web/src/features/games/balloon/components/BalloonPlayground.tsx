@@ -35,7 +35,6 @@ export default function BalloonPlayground({ players }: Props) {
                         // X osa: Progress 0-100%
                         left: `${p.progress}%`,
                         // Y osa: Mapujeme výšku senzoru (0-1000) na výšku plochy (0-400px)
-                        // Invertujeme, protože 0 v CSS je nahoře
                         bottom: `${(p.altitude / 1000) * 400}px`,
                         transition: 'all 0.5s ease-out',
                         fontSize: '40px',

@@ -11,11 +11,10 @@ interface GameRoomCreationForm {
 interface CreateGameModalProps {
     show: boolean;
     onHide: () => void;
-    gameType: GameType; // Nová prop
+    gameType: GameType;
 }
 
 export default function CreateGameModal({ show, onHide, gameType }: CreateGameModalProps) {
-    // Pomocná konstanta pro logiku hráčů
     const isBalloon = gameType === 'balloon';
     const defaultMaxPlayers = isBalloon ? 4 : 2;
 
@@ -69,7 +68,7 @@ export default function CreateGameModal({ show, onHide, gameType }: CreateGameMo
         return Object.keys(newErrors).length === 0;
     };
 
-    // Pomocná funkce pro získání userId (v reálném appu použij context nebo auth hook)
+    // Pomocná funkce pro získání userId a tokenu z localStorage
     const getUserIdAndToken = () => {
         const userJson = localStorage.getItem('user');
         const token = localStorage.getItem('token');
@@ -103,7 +102,7 @@ export default function CreateGameModal({ show, onHide, gameType }: CreateGameMo
             const gameData = {
                 userId,
                 name: formData.name,
-                gameType, // Použije se dynamicky z props
+                gameType,
                 password: formData.password || undefined,
                 maxPlayers: formData.maxPlayers
             };

@@ -4,21 +4,16 @@ import { Modal, Button } from "react-bootstrap";
 interface ResultShape {
   isWin?: boolean;
   reason?: string | null;
-  // volitelně může obsahovat další pole (např. winnerId), ale preferujeme
-  // explicitní props níže pro rozlišení
   [key: string]: any;
 }
 
 interface GameOverModalProps {
   show: boolean;
-  // Primární způsob: poskytni `result` s `isWin` a (nepovinně) `reason`
   result?: ResultShape | null;
-  // Alternativní (pokud server vrací jen winner id/email):
   winnerId?: string | null;
   currentPlayerId?: string | null;
-  // Handlery
-  onRetry?: () => void; // potvrzení restartu / návratu do lobby
-  onClose?: () => void; // zavření modalu bez redirectu (volitelné)
+  onRetry?: () => void;
+  onClose?: () => void;
 }
 
 export default function GameOverModal({
@@ -29,7 +24,6 @@ export default function GameOverModal({
   onRetry,
   onClose,
 }: GameOverModalProps) {
-  // Rozhodneme, jestli hráč vyhrál:
   let isWin: boolean | null = null;
   let reason: string | null = null;
 
@@ -41,7 +35,6 @@ export default function GameOverModal({
     reason = result?.reason ?? null;
   }
 
-  // Fallback: pokud nelze rozhodnout, zobraz neutrální zprávu
   const title = isWin === true ? "Vítězství!" : isWin === false ? "Prohra..." : "Konec hry";
   const icon = isWin === true ? "🏆" : isWin === false ? "😞" : "⚑";
   const subtitle =
@@ -54,7 +47,6 @@ export default function GameOverModal({
   const handlePrimary = () => {
     if (onRetry) onRetry();
     else {
-      // zabezpečený fallback: přesměruj na výběr her
       window.location.href = "/games";
     }
   };

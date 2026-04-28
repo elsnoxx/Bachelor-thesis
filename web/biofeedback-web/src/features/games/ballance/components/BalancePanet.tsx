@@ -1,7 +1,7 @@
 import React from "react";
 
 type Props = {
-  ballPos?: number | null; // očekáváme 0-100 (procenta)
+  ballPos?: number | null;
   targetMin?: number;
   targetMax?: number;
   isCalibrating?: boolean;
@@ -24,7 +24,7 @@ export default function BalanceArena({
   const tEnd = clamp(targetMax, 0, 100);
   const tWidth = tEnd - tStart;
   
-  const inTarget = cxPct <= tEnd; // Pokud jsme pod limitem, jsme v cíli
+  const inTarget = cxPct <= tEnd;
 
   return (
     <div className="p-4 bg-white rounded shadow-sm border h-100 d-flex flex-column align-items-center">

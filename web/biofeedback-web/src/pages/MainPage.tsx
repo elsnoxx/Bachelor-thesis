@@ -11,15 +11,14 @@ export default function MainPage() {
     const [latency, setLatency] = useState(null);
     const [lastEcho, setLastEcho] = useState(null);
 
-    // Effect pro inicializaci SignalR připojení k TestHubu
+
     useEffect(() => {
         if (isConnected) {
-            // Získání tokenu z localStorage (předpokládám, že ho tam ukládáš při login)
+            // Získání tokenu z localStorage
             const token = localStorage.getItem("token"); 
 
             const connection = new signalR.HubConnectionBuilder()
                 .withUrl(`${import.meta.env.VITE_API_URL}/testhub`, {
-                    // Předání tokenu přes query string (jak máš nastaveno v Program.cs)
                     accessTokenFactory: () => token 
                 })
                 .withAutomaticReconnect()
@@ -27,7 +26,6 @@ export default function MainPage() {
 
             connection.on("PongSensorData", (data) => {
                 const now = new Date();
-                // Server posílá DateTime.UtcNow, JS to převede na Date objekt
                 const sentTime = new Date(data.serverTimestamp);
                 setLatency(now - sentTime); 
                 setLastEcho(data.receivedValue);
@@ -40,24 +38,20 @@ export default function MainPage() {
                 })
                 .catch(err => console.error("TestHub Connection Error: ", err));
 
-            // Cleanup: při odpojení senzoru nebo opuštění stránky zavřít socket
             return () => {
                 if (connection) {
                     connection.stop();
                 }
             };
         } else {
-            // Pokud se senzor odpojí, vyčistit stav
             setTestHub(null);
             setLatency(null);
             setLastEcho(null);
         }
     }, [isConnected]);
 
-    // Effect pro automatické odesílání dat do TestHubu při každé změně gsrValue
     useEffect(() => {
         if (testHub && isConnected && gsrValue !== null) {
-            // Voláme metodu na backendu
             testHub.invoke("PingSensorData", gsrValue)
                 .catch(err => console.error("Error invoking PingSensorData:", err));
         }
