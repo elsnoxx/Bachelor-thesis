@@ -29,7 +29,7 @@ note over FE : Hra je odemčena až nyní
 
 loop Každých 100ms (vzorkování 10Hz)
     BLE -> FE : Surová hodnota EDA (v_raw)
-    FE -> FE : Normalizace: v_norm = (v_raw / 65535) * 1000
+    FE -> FE : Normalizace: v_norm = (v_raw / 10000) * 1000
     FE -> Hub : SendGameData(v_norm)
     Hub -> Backend : HandleMove(v_norm)
     Backend -> Model : Uložit vzorek pro Baseline
@@ -40,7 +40,7 @@ Backend -> Model : Stanovit baseline (klouzavé okno)
 
 loop Každých 100ms
     BLE -> FE : Surová hodnota EDA (v_raw)
-    FE -> FE : v_norm = (v_raw / 65535) * 1000
+    FE -> FE : v_norm = (v_raw / 10000) * 1000
     FE -> Hub : SendGameData(roomId, "balance", v_norm)
     Hub -> Backend : HandleMove("balance", roomId, email, v_norm)
 
